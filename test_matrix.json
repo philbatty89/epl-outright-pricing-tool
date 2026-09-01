@@ -1,0 +1,108 @@
+{
+  "description": "SODA-1179 EPL Outright SGx Market Test Matrix",
+  "game_id": "40680329",
+  "scenarios": [
+    {
+      "name": "Top 3 Finish SGx - Man City",
+      "selections": [{"market": "Top 3 Finish", "team": "Man City"}]
+    },
+    {
+      "name": "Top London Club SGx - Arsenal",
+      "selections": [{"market": "Top London Club", "team": "Arsenal"}]
+    },
+    {
+      "name": "Top Half Finish - Leeds",
+      "selections": [{"market": "Top Half", "team": "Leeds"}]
+    },
+    {
+      "name": "Bottom Half Finish SGx - Leeds",
+      "selections": [{"market": "Bottom Half", "team": "Leeds"}]
+    },
+    {
+      "name": "Top 4 (Newcastle) + Top NE Club (Newcastle)",
+      "selections": [
+        {"market": "Top 4 Finish", "team": "Newcastle"},
+        {"market": "Top North East Club", "team": "Newcastle"}
+      ]
+    },
+    {
+      "name": "Winner (Liverpool) + Top NW Club (Liverpool)",
+      "selections": [
+        {"market": "Outright Winner", "team": "Liverpool"},
+        {"market": "Top North West Club", "team": "Liverpool"}
+      ]
+    },
+    {
+      "name": "Top Yorkshire (Leeds) + Avoid Relegation (Leeds)",
+      "selections": [
+        {"market": "Top Yorkshire Club", "team": "Leeds"},
+        {"market": "Avoid Relegation", "team": "Leeds"}
+      ]
+    },
+    {
+      "name": "Top 3 (Man City) + Relegated (Ipswich)",
+      "selections": [
+        {"market": "Top 3 Finish", "team": "Man City"},
+        {"market": "To Be Relegated", "team": "Ipswich"}
+      ]
+    },
+    {
+      "name": "IMPOSSIBLE: Relegated + Top 3 (Man City)",
+      "selections": [
+        {"market": "To Be Relegated", "team": "Man City"},
+        {"market": "Top 3 Finish", "team": "Man City"}
+      ],
+      "expected": "impossible"
+    },
+    {
+      "name": "IMPOSSIBLE: Outside Top 4 + Top 3 (Arsenal)",
+      "selections": [
+        {"market": "Outside Top 4", "team": "Arsenal"},
+        {"market": "Top 3 Finish", "team": "Arsenal"}
+      ],
+      "expected": "impossible"
+    },
+    {
+      "name": "IMPOSSIBLE: Top London (Arsenal) + Top London (Chelsea)",
+      "selections": [
+        {"market": "Top London Club", "team": "Arsenal"},
+        {"market": "Top London Club", "team": "Chelsea"}
+      ],
+      "expected": "impossible"
+    },
+    {
+      "name": "IMPOSSIBLE: 4 teams in Top 3",
+      "selections": [
+        {"market": "Top 3 Finish", "team": "Arsenal"},
+        {"market": "Top 3 Finish", "team": "Chelsea"},
+        {"market": "Top 3 Finish", "team": "Man City"},
+        {"market": "Top 3 Finish", "team": "Liverpool"}
+      ],
+      "expected": "impossible"
+    },
+    {
+      "name": "Full EPL singles: Arsenal Winner",
+      "selections": [{"market": "Outright Winner", "team": "Arsenal"}]
+    },
+    {
+      "name": "Full EPL singles: Man City Winner",
+      "selections": [{"market": "Outright Winner", "team": "Man City"}]
+    },
+    {
+      "name": "Full EPL singles: Liverpool Winner",
+      "selections": [{"market": "Outright Winner", "team": "Liverpool"}]
+    },
+    {
+      "name": "To Finish 2nd SGx - Arsenal",
+      "selections": [{"market": "To Finish 2nd", "team": "Arsenal"}]
+    },
+    {
+      "name": "Top 8 Finish SGx - Newcastle",
+      "selections": [{"market": "Top 8 Finish", "team": "Newcastle"}]
+    },
+    {
+      "name": "Top Promoted Club SGx - Leeds",
+      "selections": [{"market": "Top Promoted Club", "team": "Leeds"}]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+config.py
+snapshots/
+__pycache__/
+*.pyc
+.DS_Store

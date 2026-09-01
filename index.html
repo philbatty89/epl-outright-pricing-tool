@@ -1,0 +1,2562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPL Outright Pricing Tool</title>
+    <style>
+        :root {
+            --bg-body: #0f1923;
+            --bg-header: linear-gradient(135deg, #1a2a3a 0%, #0d1b2a 100%);
+            --bg-panel: linear-gradient(180deg, #162330 0%, #131f2b 100%);
+            --bg-card: rgba(0,0,0,0.25);
+            --bg-input: #0f1923;
+            --bg-row: rgba(0,0,0,0.2);
+            --bg-pql: rgba(0,0,0,0.2);
+            --text: #e0e0e0;
+            --text-secondary: #aaa;
+            --text-muted: #666;
+            --text-dim: #444;
+            --accent: #4fc3f7;
+            --border: rgba(255,255,255,0.06);
+            --border-subtle: rgba(255,255,255,0.04);
+            --border-accent: rgba(79,195,247,0.2);
+            --shadow: rgba(0,0,0,0.2);
+            --shadow-strong: rgba(0,0,0,0.6);
+        }
+        [data-theme="light"] {
+            --bg-body: #f4f6f9;
+            --bg-header: linear-gradient(135deg, #fff 0%, #f4f6f9 100%);
+            --bg-panel: #ffffff;
+            --bg-card: #ffffff;
+            --bg-input: #ffffff;
+            --bg-row: #f8f9fb;
+            --bg-pql: #f0f2f5;
+            --text: #1a1a2e;
+            --text-secondary: #555;
+            --text-muted: #999;
+            --text-dim: #ccc;
+            --accent: #1976d2;
+            --border: rgba(0,0,0,0.08);
+            --border-subtle: rgba(0,0,0,0.05);
+            --border-accent: rgba(25,118,210,0.25);
+            --shadow: rgba(0,0,0,0.05);
+            --shadow-strong: rgba(0,0,0,0.12);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-body); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
+        
+        .header { background: var(--bg-header); padding: 16px 30px; border-bottom: 1px solid var(--border-accent); display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 12px var(--shadow); }
+        .header h1 { font-size: 1.3em; color: #fff; font-weight: 600; letter-spacing: -0.3px; }
+        .header .badge { background: rgba(79,195,247,0.15); padding: 4px 10px; border-radius: 12px; font-size: 0.7em; color: #4fc3f7; border: 1px solid rgba(79,195,247,0.3); }
+        .header .status { margin-left: auto; font-size: 0.8em; }
+        .header .status.connected { color: #66bb6a; }
+        .header .status.error { color: #ef5350; }
+        .header .format-toggle { margin-left: 10px; display: flex; border-radius: 6px; overflow: hidden; border: 1px solid rgba(79,195,247,0.3); }
+        .header .format-toggle .btn { font-size: 0.72em; padding: 5px 12px; border-radius: 0; border: none; }
+        .header .format-toggle .btn.active { background: #4fc3f7; color: #0f1923; font-weight: 600; }
+        .header .format-toggle .btn:not(.active) { background: rgba(79,195,247,0.08); color: #4fc3f7; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        .panel { background: var(--bg-panel); border-radius: 12px; padding: 22px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 4px 16px var(--shadow); transition: background 0.3s, border-color 0.3s; }
+        .panel h2 { font-size: 1em; color: #4fc3f7; margin-bottom: 15px; font-weight: 500; letter-spacing: 0.3px; }
+
+        /* Scenario Builder */
+        .builder { display: flex; flex-direction: column; gap: 10px; }
+        .leg-row { display: flex; gap: 10px; align-items: center; padding: 8px 12px; background: var(--bg-row); border-radius: 8px; border: 1px solid var(--border-subtle); transition: border-color 0.2s; }
+        .leg-row:hover { border-color: var(--border-accent); }
+        .leg-row select, .leg-row input { background: var(--bg-input); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 6px; font-size: 0.85em; transition: border-color 0.2s; }
+        .leg-row select { min-width: 180px; cursor: pointer; }
+        .leg-row select:focus, .leg-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,195,247,0.1); }
+        .leg-row .remove-btn { background: rgba(239,83,80,0.15); border: 1px solid rgba(239,83,80,0.3); color: #ef5350; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font-size: 1.1em; transition: all 0.2s; }
+        .leg-row .remove-btn:hover { background: #ef5350; color: white; }
+
+        .btn { padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85em; font-weight: 500; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%); color: #0f1923; font-weight: 600; box-shadow: 0 2px 8px rgba(79,195,247,0.25); }
+        .btn-primary:hover { background: linear-gradient(135deg, #81d4fa 0%, #4fc3f7 100%); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,195,247,0.35); }
+        .btn-secondary { background: rgba(79,195,247,0.08); color: #4fc3f7; border: 1px solid rgba(79,195,247,0.25); }
+        .btn-secondary:hover { background: rgba(79,195,247,0.15); border-color: #4fc3f7; }
+        .btn-success { background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%); color: #0f1923; }
+        .btn-success:hover { background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .actions { display: flex; gap: 10px; margin-top: 12px; }
+
+        /* Results */
+        .result-card { background: var(--bg-card); border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; border: 1px solid var(--border-subtle); transition: all 0.2s; }
+        .result-card:hover { border-color: var(--border); transform: translateY(-1px); }
+        .result-card.valid { border-left: 4px solid #66bb6a; }
+        .result-card.impossible { border-left: 4px solid #ef5350; background: rgba(239,83,80,0.04); }
+        .result-card.error { border-left: 4px solid #ff9800; }
+        .result-card .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .result-card .result-name { font-weight: 500; font-size: 0.95em; }
+        .result-card .result-prices { display: flex; gap: 24px; align-items: baseline; padding: 10px 0; }
+        .result-card .result-price { font-size: 1.4em; font-weight: 700; }
+        .result-card .result-price.valid { color: #66bb6a; }
+        .result-card .result-price.impossible { color: #ef5350; }
+        .result-card .price-label { font-size: 0.68em; color: #888; text-transform: uppercase; letter-spacing: 0.8px; cursor: help; border-bottom: 1px dotted #555; }
+        .result-card .price-group { text-align: center; position: relative; }
+        .result-card .price-group .value { font-size: 1.4em; font-weight: 700; margin: 4px 0; }
+        .result-card .price-group .value.oqs { color: #4fc3f7; }
+        .result-card .price-group .value.pes { color: #ce93d8; }
+        .result-card .price-group .value.match { color: #66bb6a; }
+        .result-card .price-group .value.impossible { color: #ef5350; }
+        .result-card .price-group .value.unreliable { color: #ce93d8; opacity: 0.4; }
+        .result-card .result-pql { font-size: 0.72em; color: #555; margin-top: 8px; font-family: 'SF Mono', 'Fira Code', monospace; word-break: break-all; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px; }
+        .result-card .result-prob { font-size: 0.8em; color: #888; }
+        .result-card .result-match { font-size: 0.75em; margin-top: 4px; }
+        .result-card .result-match.yes { color: #66bb6a; }
+        .result-card .result-match.no { color: #ff9800; }
+        .result-card .reliability-badge { font-size: 0.62em; padding: 2px 8px; border-radius: 10px; margin-top: 3px; display: inline-block; letter-spacing: 0.3px; }
+        .result-card .reliability-badge.trusted { background: rgba(102,187,106,0.12); color: #66bb6a; border: 1px solid rgba(102,187,106,0.25); }
+        .result-card .reliability-badge.unreliable { background: rgba(255,152,0,0.12); color: #ff9800; border: 1px solid rgba(255,152,0,0.25); }
+
+        /* Tooltips */
+        .tooltip-wrapper { position: relative; display: inline-block; }
+        .tooltip-wrapper .tooltip-text { visibility: hidden; width: 280px; background: #0a0f14; color: #e0e0e0; text-align: left; border-radius: 8px; padding: 12px 14px; position: absolute; z-index: 100; bottom: 125%; left: 50%; margin-left: -140px; font-size: 0.78em; line-height: 1.5; border: 1px solid rgba(79,195,247,0.2); box-shadow: 0 8px 24px rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        .tooltip-wrapper .tooltip-text::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: rgba(79,195,247,0.2) transparent transparent transparent; }
+        .tooltip-wrapper:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+        /* Quick Singles */
+        .singles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+        .single-card { background: var(--bg-card); border-radius: 8px; padding: 14px 10px; border: 1px solid var(--border-subtle); text-align: center; cursor: pointer; transition: all 0.2s; }
+        .single-card:hover { border-color: var(--border-accent); transform: translateY(-2px); box-shadow: 0 4px 12px var(--shadow); }
+        .single-card .team-name { font-size: 0.8em; color: var(--text-secondary); margin-bottom: 4px; }
+        .single-card .price { font-size: 1.3em; font-weight: 700; color: var(--accent); }
+        .single-card.loading .price { color: var(--text-dim); }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; margin-bottom: 0; }
+        .tab { padding: 10px 20px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; color: #666; font-size: 0.85em; font-weight: 500; transition: all 0.2s; }
+        .tab.active { background: linear-gradient(180deg, #162330 0%, #131f2b 100%); color: #4fc3f7; border-color: rgba(79,195,247,0.2); border-bottom: 1px solid #131f2b; position: relative; z-index: 1; }
+        .tab:hover:not(.active) { color: #aaa; }
+
+        /* History */
+        .history-table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+        .history-table th { text-align: left; padding: 10px; color: #4fc3f7; border-bottom: 1px solid rgba(79,195,247,0.15); font-weight: 500; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; }
+        .history-table td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .history-table tr:hover { background: rgba(79,195,247,0.04); }
+
+        .loading-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #4fc3f7; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state { text-align: center; color: #444; padding: 40px; font-style: italic; font-size: 0.9em; }
+
+        .autoscan-filter.active { font-weight: 600; box-shadow: 0 0 0 2px var(--accent); }
+        .autoscan-filter[data-filter="impossible"].active { box-shadow: 0 0 0 2px #ef5350; background: rgba(239,83,80,0.12); }
+        .autoscan-filter[data-filter="valid"].active { box-shadow: 0 0 0 2px #66bb6a; background: rgba(102,187,106,0.12); }
+
+        .metric-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .metric-tab { padding: 8px 16px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 8px; cursor: pointer; color: var(--text-secondary); font-size: 0.85em; font-weight: 500; transition: all 0.2s; }
+        .metric-tab:hover { color: var(--text); border-color: var(--border-accent); }
+        .metric-tab.active { background: var(--accent); color: var(--bg-body); font-weight: 600; border-color: var(--accent); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(79,195,247,0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(79,195,247,0.4); }
+
+        /* Staleness Banner */
+        .staleness-banner { background: rgba(255,193,7,0.15); border: 1px solid rgba(255,193,7,0.4); color: #ffc107; padding: 12px 24px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85em; display: none; align-items: center; gap: 10px; }
+        .staleness-banner.visible { display: flex; }
+
+        /* Favourites */
+        .fav-btn { background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 4px; transition: transform 0.2s; }
+        .fav-btn:hover { transform: scale(1.2); }
+        .fav-btn.starred { color: #ffc107; }
+        .fav-btn:not(.starred) { color: var(--text-muted); }
+        .favourites-section { margin-bottom: 16px; padding: 12px; background: rgba(255,193,7,0.05); border: 1px solid rgba(255,193,7,0.15); border-radius: 8px; }
+        .favourites-section h3 { font-size: 0.85em; color: #ffc107; margin-bottom: 8px; }
+        .fav-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; margin: 3px; font-size: 0.78em; cursor: pointer; transition: all 0.2s; }
+        .fav-chip:hover { border-color: var(--accent); background: rgba(79,195,247,0.05); }
+        .fav-chip .remove-fav { color: #ef5350; margin-left: 4px; font-weight: bold; }
+
+        /* Data Table (shared) */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+        .data-table th { text-align: left; padding: 10px; color: var(--accent); border-bottom: 1px solid rgba(79,195,247,0.15); font-weight: 500; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; user-select: none; }
+        .data-table th:hover { color: #81d4fa; }
+        .data-table th.sorted-asc::after { content: ' ▲'; font-size: 0.7em; }
+        .data-table th.sorted-desc::after { content: ' ▼'; font-size: 0.7em; }
+        .data-table td { padding: 10px; border-bottom: 1px solid var(--border-subtle); }
+        .data-table tr:hover { background: rgba(79,195,247,0.04); }
+        .data-table .highlight { background: rgba(255,193,7,0.08); }
+
+        /* Batch Runner */
+        .progress-bar-container { width: 100%; height: 6px; background: var(--bg-row); border-radius: 3px; margin: 10px 0; overflow: hidden; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #4fc3f7, #29b6f6); border-radius: 3px; transition: width 0.3s; width: 0%; }
+        .progress-text { font-size: 0.75em; color: var(--text-secondary); margin-bottom: 8px; }
+
+        /* Snapshot diff highlights */
+        .diff-positive { color: #ef5350; }
+        .diff-negative { color: #66bb6a; }
+        .diff-major { font-weight: 700; }
+
+        /* Auto-scan */
+        .combo-valid { color: #66bb6a; }
+        .combo-impossible { color: #ef5350; }
+
+        /* Correlation Matrix / Heatmap */
+        .heatmap-container { overflow-x: auto; margin-top: 12px; }
+        .heatmap-table { border-collapse: collapse; font-size: 0.72em; }
+        .heatmap-table th { padding: 6px 8px; font-size: 0.7em; writing-mode: vertical-rl; text-orientation: mixed; color: var(--text-secondary); }
+        .heatmap-table td { padding: 4px 6px; text-align: center; min-width: 40px; border: 1px solid var(--border-subtle); font-size: 0.75em; }
+        .heatmap-table .row-header { writing-mode: horizontal-tb; font-weight: 500; color: var(--text-secondary); text-align: right; padding-right: 8px; }
+
+        /* Canvas chart */
+        .chart-container { margin-top: 12px; background: var(--bg-card); border-radius: 8px; padding: 16px; border: 1px solid var(--border-subtle); }
+        .chart-container canvas { width: 100%; height: 200px; }
+
+        /* Margin/overround stat */
+        .stat-box { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 16px; margin-right: 12px; margin-bottom: 12px; }
+        .stat-box .stat-label { font-size: 0.72em; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-box .stat-value { font-size: 1.1em; font-weight: 700; color: var(--accent); }
+
+        /* File upload area */
+        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 12px; }
+        .upload-area:hover { border-color: var(--accent); background: rgba(79,195,247,0.03); }
+        .upload-area input[type="file"] { display: none; }
+
+        /* Snapshot list */
+        .snapshot-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 8px; }
+        .snapshot-item .snapshot-name { font-size: 0.85em; color: var(--text); }
+        .snapshot-item .snapshot-date { font-size: 0.72em; color: var(--text-secondary); }
+
+        /* Production comparison columns */
+        .prod-compare-table td.oqs-col { color: var(--accent); }
+        .prod-compare-table td.prod-col { color: #ce93d8; }
+        .prod-compare-table td.diff-col { font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏟️ EPL Outright Pricing Tool</h1>
+        <span class="badge">SLOT NXT</span>
+        <span class="badge" id="game-badge">Game: loading...</span>
+        <select id="competition-select" onchange="switchCompetition(this.value)" style="background:var(--bg-input);border:1px solid var(--border-accent);color:var(--accent);padding:4px 10px;border-radius:12px;font-size:0.7em;cursor:pointer;">
+            <option value="40680329">EPL 2026/27</option>
+            <option value="CHAMPIONSHIP">Championship 2026/27</option>
+            <option value="LEAGUE_ONE">League One 2026/27</option>
+            <option value="LEAGUE_TWO">League Two 2026/27</option>
+            <option value="CUSTOM">Custom Fixture ID...</option>
+        </select>
+        <span class="badge" id="matrix-badge" style="cursor:pointer;" onclick="refreshMatrix()" title="Click to check for matrix updates">🔄 Matrix: checking...</span>
+        <span class="badge" id="version-badge" title="App version">v…</span>
+        <span class="status" id="status">Connecting...</span>
+        <div class="format-toggle">
+            <button class="btn active" id="btn-decimal" onclick="setFormat('decimal')">Decimal</button>
+            <button class="btn" id="btn-fraction" onclick="setFormat('fraction')">Fraction</button>
+        </div>
+        <button class="btn btn-secondary" id="theme-toggle" onclick="toggleTheme()" style="margin-left:10px;font-size:0.75em;padding:5px 10px;">🌙 Dark</button>
+    </div>
+
+    <div class="container">
+        <!-- Staleness Alert -->
+        <div class="staleness-banner" id="staleness-banner">
+            ⚠️ <span id="staleness-msg">Matrix has not updated recently.</span>
+            <button class="btn btn-secondary" onclick="refreshMatrix()" id="refresh-btn" style="margin-left:auto;font-size:0.75em;padding:5px 12px;">🔄 Check for Updates</button>
+        </div>
+
+        <div class="staleness-banner" id="update-banner" style="background:rgba(102,187,106,0.15);border-color:rgba(102,187,106,0.4);color:#66bb6a;">
+            🆕 <span id="update-msg">A new version is available.</span>
+            <span style="margin-left:auto;font-size:0.8em;font-family:monospace;">git pull &amp;&amp; restart</span>
+        </div>
+
+        <!-- Scenario Builder -->
+        <div class="panel">
+            <h2>Build Pricing Scenario</h2>
+            <div class="builder" id="builder">
+                <div class="leg-row" data-leg="0">
+                    <select class="market-select" onchange="onMarketChange(this)">
+                        <option value="">— Select Market —</option>
+                    </select>
+                    <select class="team-select" onchange="updatePql()">
+                        <option value="">— Select Team —</option>
+                    </select>
+                    <button class="remove-btn" onclick="removeLeg(this)" title="Remove">×</button>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="addLeg()">+ Add Leg</button>
+                <button class="btn btn-primary" onclick="calculatePrice()" id="calc-btn">Calculate Price</button>
+                <button class="btn btn-secondary" onclick="clearBuilder()">Clear</button>
+            </div>
+            <div id="pql-preview" style="margin-top: 10px; font-size: 0.75em; color: #666; font-family: monospace;"></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('results')">Results</div>
+            <div class="tab" onclick="switchTab('singles')">Quick Singles</div>
+            <div class="tab" onclick="switchTab('history')">History</div>
+            <div class="tab" onclick="switchTab('batch')">Batch Runner</div>
+            <div class="tab" onclick="switchTab('autoscan')">Auto-Scan</div>
+            <div class="tab" onclick="switchTab('pets')">PETS Round-Trip</div>
+            <div class="tab" onclick="switchTab('stats')">Team Stats</div>
+        </div>
+
+        <!-- Results Tab -->
+        <div class="panel" id="tab-results">
+            <!-- Favourites Section -->
+            <div class="favourites-section" id="favourites-section" style="display:none;">
+                <h3>⭐ Favourites</h3>
+                <div id="favourites-list"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <h2 style="margin:0;">Results</h2>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary" onclick="selectAllResults()" style="font-size:0.8em;">Select All</button>
+                    <button class="btn btn-secondary" id="confluence-export-btn" onclick="exportToConfluence()" style="font-size:0.8em;">📋 Export to Confluence</button>
+                    <button class="btn btn-secondary" onclick="clearResults()" style="font-size:0.8em;">Clear Results</button>
+                </div>
+            </div>
+            <div id="results-container">
+                <div class="empty-state">Build a scenario above and click Calculate Price</div>
+            </div>
+        </div>
+
+        <!-- Singles Tab -->
+        <div class="panel" id="tab-singles" style="display:none;">
+            <h2>Quick Singles — All Teams</h2>
+            <div style="margin-bottom: 10px;">
+                <select id="singles-market" onchange="loadSingles()">
+                    <option value="Winner">Outright Winner</option>
+                    <option value="To Finish 2nd">To Finish 2nd</option>
+                    <option value="To Finish 3rd">To Finish 3rd</option>
+                    <option value="To Finish 4th">To Finish 4th</option>
+                    <option value="Top 2">Top 2 Finish</option>
+                    <option value="Top 3 Finish">Top 3 Finish</option>
+                    <option value="Top 4">Top 4 Finish</option>
+                    <option value="Top 5">Top 5 Finish</option>
+                    <option value="Top 6">Top 6 Finish</option>
+                    <option value="Top 7">Top 7 Finish</option>
+                    <option value="Top 8">Top 8 Finish</option>
+                    <option value="Top Half">Top Half</option>
+                    <option value="Bottom Half">Bottom Half</option>
+                    <option value="Avoid Relegation">Avoid Relegation</option>
+                    <option value="Relegated">To Be Relegated</option>
+                    <option value="To Finish Bottom">To Finish Bottom</option>
+                    <option value="Outside Top 4">Outside Top 4</option>
+                    <option value="Outside Top 6">Outside Top 6</option>
+                    <option value="Top London Club">Top London Club</option>
+                    <option value="Top North West Club">Top North West Club</option>
+                    <option value="Top North East Club">Top North East Club</option>
+                    <option value="Top Yorkshire Club">Top Yorkshire Club</option>
+                    <option value="Top Midlands Club">Top Midlands Club</option>
+                    <option value="Top Northern Club">Top Northern Club</option>
+                    <option value="Top Promoted Club">Top Promoted Club</option>
+                </select>
+                <button class="btn btn-primary" onclick="loadSingles()">Load All</button>
+            </div>
+            <div class="singles-grid" id="singles-grid">
+                <div class="empty-state">Select a market and click Load All</div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div class="panel" id="tab-history" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <h2 style="margin:0;">Query History</h2>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary" onclick="selectAllHistory()" style="font-size:0.8em;">Select All</button>
+                    <button class="btn btn-secondary" onclick="exportSelectedToConfluence()" style="font-size:0.8em;">📋 Export to Confluence</button>
+                    <button class="btn btn-secondary" onclick="clearHistory()" style="font-size:0.8em;">Clear History</button>
+                </div>
+            </div>
+            <table class="history-table">
+                <thead><tr><th style="width:30px"><input type="checkbox" id="history-select-all" onchange="toggleAllHistory(this)"></th><th>Time</th><th>Scenario</th><th style="color:#4fc3f7">OQS</th><th style="color:#ce93d8">PES</th><th>Diff</th><th>PQL</th><th style="width:30px"></th></tr></thead>
+                <tbody id="history-body">
+                    <tr><td colspan="8" class="empty-state">No queries yet</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Batch Runner Tab -->
+        <div class="panel" id="tab-batch" style="display:none;">
+            <h2>Batch Runner</h2>
+            <div class="upload-area" id="batch-upload-area" onclick="document.getElementById('batch-file-input').click()">
+                <input type="file" id="batch-file-input" accept=".json,.csv" onchange="handleBatchFile(event)">
+                <p style="color:var(--text-secondary);font-size:0.9em;">📁 Click to upload JSON or CSV file</p>
+                <p style="color:var(--text-muted);font-size:0.72em;margin-top:6px;">JSON: {scenarios: [{name, selections: [{market, team}]}]}<br>CSV: name,market1|team1,market2|team2</p>
+            </div>
+            <div class="progress-bar-container" id="batch-progress-container" style="display:none;">
+                <div class="progress-bar" id="batch-progress-bar"></div>
+            </div>
+            <div class="progress-text" id="batch-progress-text"></div>
+            <div id="batch-results" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h2 style="margin:0;font-size:0.9em;">Batch Results</h2>
+                    <button class="btn btn-success" onclick="exportBatchCsv()" style="font-size:0.8em;">⬇ Export CSV</button>
+                </div>
+                <table class="data-table" id="batch-results-table">
+                    <thead><tr><th>Scenario</th><th>OQS Price</th><th>PES Price</th><th>SOCOQS Price</th><th>Diff</th><th>Status</th></tr></thead>
+                    <tbody id="batch-results-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Auto-Scan Tab -->
+        <div class="panel" id="tab-autoscan" style="display:none;">
+            <h2>Auto-Scan — 2-Leg Combo Finder</h2>
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;">
+                <select id="autoscan-team" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:6px;font-size:0.85em;min-width:180px;"></select>
+                <select id="autoscan-legs" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:6px;font-size:0.85em;">
+                    <option value="2">2-leg combos</option>
+                    <option value="3">3-leg combos</option>
+                    <option value="4">4-leg combos</option>
+                </select>
+                <button class="btn btn-primary" onclick="runAutoScan()" id="autoscan-btn">🔍 Scan All Combos</button>
+            </div>
+            <div id="autoscan-stats" style="margin-bottom:10px;"></div>
+            <div id="autoscan-filters" style="display:none;margin-bottom:10px;display:flex;gap:6px;">
+                <button class="btn btn-secondary autoscan-filter active" data-filter="all" onclick="filterAutoScan('all')">All</button>
+                <button class="btn btn-secondary autoscan-filter" data-filter="impossible" onclick="filterAutoScan('impossible')" style="border-color:rgba(239,83,80,0.4);color:#ef5350;">🚫 Impossible</button>
+                <button class="btn btn-secondary autoscan-filter" data-filter="valid" onclick="filterAutoScan('valid')" style="border-color:rgba(102,187,106,0.4);color:#66bb6a;">✓ Valid</button>
+            </div>
+            <div id="autoscan-results">
+                <div class="empty-state">Select a team and click Scan All Combos</div>
+            </div>
+        </div>
+
+        <!-- PETS Round-Trip Tab -->
+        <div class="panel" id="tab-pets" style="display:none;">
+            <h2>PETS Round-Trip Verification</h2>
+            <p style="font-size:0.82em;color:var(--text-secondary);margin-bottom:16px;line-height:1.5;">
+                Verify that a PETS-translated expression means the same thing as the original.
+                Both expressions are evaluated against SOCOQS (the OBP expression pricing engine).
+                If the probabilities match, the translation is semantically correct — the core PETS test.
+            </p>
+
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                <div>
+                    <label style="font-size:0.8em;color:var(--accent);display:block;margin-bottom:4px;">Original Expression (from SLOT / OQS)</label>
+                    <textarea id="pets-original" rows="2" placeholder="@Rank_Group_Team_15 <= 3" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-family:monospace;font-size:0.85em;resize:vertical;"></textarea>
+                </div>
+                <div>
+                    <label style="font-size:0.8em;color:#ffb74d;display:block;margin-bottom:4px;">Translated Expression (from PETS / OBB postfix)</label>
+                    <textarea id="pets-translated" rows="2" placeholder="Paste the PETS-translated expression here" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-family:monospace;font-size:0.85em;resize:vertical;"></textarea>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <label style="font-size:0.8em;color:var(--text-secondary);">Expected Odds (SLOT trueOdds, optional):</label>
+                    <input id="pets-expected-odds" type="number" step="0.01" placeholder="e.g. 1.49" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:0.85em;width:120px;">
+                    <button class="btn btn-primary" onclick="runPetsRoundtrip()" id="pets-btn">Verify Translation</button>
+                </div>
+            </div>
+
+            <div id="pets-results" style="margin-top:20px;"></div>
+        </div>
+
+        <!-- Team Stats Tab -->
+        <div class="panel" id="tab-stats" style="display:none;">
+            <h2>Team Stats — Distribution Analysis</h2>
+            <p style="font-size:0.82em;color:var(--text-secondary);margin-bottom:16px;line-height:1.5;">
+                Shows the statistical distribution of a metric across all simulated seasons — mean, median, percentiles.
+                Useful for understanding the shape of a team's projected outcomes, not just single-threshold probabilities.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+                <select id="stats-team" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:6px;font-size:0.85em;min-width:160px;"></select>
+                <button class="btn btn-primary" onclick="loadStats()" id="stats-btn">Show This Team</button>
+                <button class="btn btn-secondary" onclick="loadAllStats()">Show All Teams</button>
+            </div>
+            <!-- Metric sub-tabs (auto-populated) -->
+            <div class="metric-tabs" id="stats-metric-tabs" style="margin-bottom:14px;"></div>
+            <div id="stats-results"></div>
+        </div>
+    </div>
+
+    <script>
+        // ─── State ──────────────────────────────────────────────────────
+        let teams = {};
+        let teamsList = [];
+        let columns = [];
+        let selections = {}; // "MarketName|TeamName" -> {selectionRampId, market, team, ...}
+        let history = [];
+        let gameId = '40680329';
+        let priceFormat = 'decimal'; // 'decimal' or 'fraction'
+
+        // ─── Competitions ───────────────────────────────────────────────
+        const COMPETITIONS = {
+            "40680329": { name: "English Premier League", shortName: "EPL" },
+            "CHAMPIONSHIP": { name: "English Championship", shortName: "Championship", placeholder: true },
+            "LEAGUE_ONE": { name: "English League One", shortName: "League One", placeholder: true },
+            "LEAGUE_TWO": { name: "English League Two", shortName: "League Two", placeholder: true },
+        };
+
+        async function switchCompetition(newGameId) {
+            if (newGameId === 'CUSTOM') {
+                const customId = prompt('Enter fixture ID:');
+                if (!customId || !customId.trim()) {
+                    document.getElementById('competition-select').value = gameId;
+                    return;
+                }
+                newGameId = customId.trim();
+                // Add it to the dropdown
+                const sel = document.getElementById('competition-select');
+                const opt = document.createElement('option');
+                opt.value = newGameId;
+                opt.textContent = `Custom (${newGameId})`;
+                sel.insertBefore(opt, sel.lastElementChild);
+                sel.value = newGameId;
+                COMPETITIONS[newGameId] = { name: `Fixture ${newGameId}`, shortName: `#${newGameId}` };
+            }
+
+            const comp = COMPETITIONS[newGameId];
+            if (comp && comp.placeholder) {
+                showToast(`⏳ Searching for ${comp.name} on SLOT NXT...`);
+                const found = await findCompetitionFixture(comp.name);
+                if (found) {
+                    newGameId = found;
+                    COMPETITIONS[found] = { name: comp.name, shortName: comp.shortName };
+                    const sel = document.getElementById('competition-select');
+                    // Update the option value
+                    const opt = Array.from(sel.options).find(o => o.textContent.includes(comp.shortName));
+                    if (opt) {
+                        opt.value = found;
+                    }
+                    sel.value = found;
+                } else {
+                    showToast(`⚠️ ${comp.name} not found on SLOT NXT. The simulation may not have been run yet.`);
+                    document.getElementById('competition-select').value = gameId;
+                    return;
+                }
+            }
+
+            gameId = newGameId;
+            const displayComp = COMPETITIONS[gameId] || { shortName: gameId };
+            document.getElementById('game-badge').textContent = `Loading ${displayComp.shortName}...`;
+            document.getElementById('status').textContent = '● Reconnecting...';
+            document.getElementById('status').className = 'status';
+
+            try {
+                await init();
+                checkStaleness();
+                populateProbMarketSelect();
+                populateAutoScanTeam();
+                showToast(`✅ Switched to ${displayComp.name || displayComp.shortName}`);
+            } catch (e) {
+                showToast(`❌ Failed to load ${displayComp.shortName}: ${e.message}`);
+                // Revert to EPL
+                gameId = '40680329';
+                document.getElementById('competition-select').value = '40680329';
+                await init();
+            }
+        }
+
+        async function findCompetitionFixture(competitionName) {
+            // Try a range of fixture IDs near the EPL one
+            const candidates = [];
+            for (let i = 40680320; i <= 40680360; i++) {
+                if (i === 40680329) continue; // Skip EPL
+                candidates.push(String(i));
+            }
+
+            for (const fid of candidates) {
+                try {
+                    const resp = await fetch(`/api/metadata?gameId=${fid}`);
+                    const data = await resp.json();
+                    if (data.metadata && data.metadata.TeamInfo && Object.keys(data.metadata.TeamInfo).length > 0) {
+                        return fid;
+                    }
+                } catch (e) {}
+            }
+            return null;
+        }
+
+        // ─── Price Formatting ───────────────────────────────────────────
+        let currentTheme = 'dark';
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            if (currentTheme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                document.getElementById('theme-toggle').textContent = '☀️ Light';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                document.getElementById('theme-toggle').textContent = '🌙 Dark';
+            }
+        }
+
+        function setFormat(format) {
+            priceFormat = format;
+            document.getElementById('btn-decimal').className = 'btn' + (format === 'decimal' ? ' active' : '');
+            document.getElementById('btn-fraction').className = 'btn' + (format === 'fraction' ? ' active' : '');
+            // Re-render all visible prices
+            document.querySelectorAll('[data-decimal-price]').forEach(el => {
+                const price = parseFloat(el.dataset.decimalPrice);
+                el.textContent = formatPrice(price);
+            });
+        }
+
+        function formatPrice(decimalPrice, dp) {
+            if (decimalPrice === null || decimalPrice === undefined) return '—';
+            if (priceFormat === 'fraction') {
+                return decimalToFraction(decimalPrice);
+            }
+            return decimalPrice.toFixed(dp !== undefined ? dp : 4);
+        }
+
+        function decimalToFraction(decimal) {
+            if (decimal <= 1) return 'EVS';
+            const profit = decimal - 1;
+            
+            // Common betting fractions to try matching against
+            const commonDenoms = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 25, 33, 40, 50, 66, 100];
+            
+            let bestNum = Math.round(profit);
+            let bestDen = 1;
+            let bestError = Math.abs(profit - bestNum);
+
+            for (const den of commonDenoms) {
+                const num = Math.round(profit * den);
+                const error = Math.abs(profit - num / den);
+                if (error < bestError) {
+                    bestError = error;
+                    bestNum = num;
+                    bestDen = den;
+                }
+                if (error < 0.005) break; // Close enough
+            }
+
+            // Simplify
+            const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+            const divisor = gcd(bestNum, bestDen);
+            bestNum = bestNum / divisor;
+            bestDen = bestDen / divisor;
+
+            if (bestDen === 1) return `${bestNum}/1`;
+            return `${bestNum}/${bestDen}`;
+        }
+
+        const MARKETS = [
+            { name: "Outright Winner", value: "Winner" },
+            { name: "To Finish 2nd", value: "To Finish 2nd" },
+            { name: "To Finish 3rd", value: "To Finish 3rd" },
+            { name: "To Finish 4th", value: "To Finish 4th" },
+            { name: "Top 2 Finish", value: "Top 2" },
+            { name: "Top 3 Finish", value: "Top 3 Finish" },
+            { name: "Top 4 Finish", value: "Top 4" },
+            { name: "Top 5 Finish", value: "Top 5" },
+            { name: "Top 6 Finish", value: "Top 6" },
+            { name: "Top 7 Finish", value: "Top 7" },
+            { name: "Top 8 Finish", value: "Top 8" },
+            { name: "Top Half", value: "Top Half" },
+            { name: "Bottom Half", value: "Bottom Half" },
+            { name: "Avoid Relegation", value: "Avoid Relegation" },
+            { name: "To Be Relegated", value: "Relegated" },
+            { name: "To Finish Bottom", value: "To Finish Bottom" },
+            { name: "Outside Top 4", value: "Outside Top 4" },
+            { name: "Outside Top 6", value: "Outside Top 6" },
+            { name: "Top London Club", value: "Top London Club" },
+            { name: "Top North West Club", value: "Top North West Club" },
+            { name: "Top North East Club", value: "Top North East Club" },
+            { name: "Top Yorkshire Club", value: "Top Yorkshire Club" },
+            { name: "Top Midlands Club", value: "Top Midlands Club" },
+            { name: "Top Northern Club", value: "Top Northern Club" },
+            { name: "Top Promoted Club", value: "Top Promoted Club" },
+            { name: "Most Goals", value: "Most Goals" },
+            { name: "Most Points", value: "Most Points" },
+            { name: "Fewest Goals Conceded", value: "Fewest Goals Conceded" },
+        ];
+
+        const REGIONAL_GROUPS = {
+            "london": ["Arsenal", "Chelsea", "Tottenham", "Crystal Palace", "Fulham", "Brentford"],
+            "north west": ["Liverpool", "Man City", "Man Utd", "Everton"],
+            "north east": ["Newcastle", "Sunderland"],
+            "yorkshire": ["Leeds", "Hull"],
+            "midlands": ["Aston Villa", "Coventry", "Nottm Forest"],
+            "northern": ["Liverpool", "Man City", "Man Utd", "Everton", "Newcastle", "Sunderland", "Leeds", "Hull"],
+            "promoted": ["Leeds", "Coventry", "Hull"],
+        };
+
+        // Market-to-allowed-teams filter (from SLOT selections data)
+        // null = all teams allowed
+        const MARKET_TEAM_FILTER = {
+            "Top London Club": ["Arsenal", "Brentford", "Chelsea", "Crystal Palace", "Fulham", "Tottenham"],
+            "Top North West Club": ["Everton", "Liverpool", "Man City", "Man Utd"],
+            "Top North East Club": ["Newcastle", "Sunderland"],
+            "Top Yorkshire Club": ["Hull", "Leeds"],
+            "Top Midlands Club": ["Aston Villa", "Coventry", "Nottm Forest"],
+            "Top Northern Club": ["Everton", "Hull", "Leeds", "Liverpool", "Man City", "Man Utd", "Newcastle", "Sunderland"],
+            "Top Promoted Club": ["Coventry", "Hull", "Leeds"],
+            "Winner Without the Big 6": ["Aston Villa", "Bournemouth", "Brentford", "Brighton", "Coventry", "Crystal Palace", "Everton", "Fulham", "Hull", "Ipswich", "Leeds", "Newcastle", "Nottm Forest", "Sunderland"],
+            "Betting Without Favourite": null, // TBD - no selections in SLOT yet
+            "Betting Without": null, // TBD
+            "Most Goals": null,
+            "Most Points": null,
+            "Fewest Goals Conceded": null,
+        };
+
+        function getTeamsForMarket(marketValue) {
+            // Map UI market value to the filter key
+            const filterMap = {
+                "Top London Club": "Top London Club",
+                "Top North West Club": "Top North West Club",
+                "Top North East Club": "Top North East Club",
+                "Top Yorkshire Club": "Top Yorkshire Club",
+                "Top Midlands Club": "Top Midlands Club",
+                "Top Northern Club": "Top Northern Club",
+                "Top Promoted Club": "Top Promoted Club",
+                "Most Goals": "Most Goals",
+                "Most Points": "Most Points",
+                "Fewest Goals Conceded": "Fewest Goals Conceded",
+            };
+            
+            // Check Winner Without the Big 6 etc via the MARKET_NAME_MAP
+            const slotName = MARKET_NAME_MAP[marketValue] || marketValue;
+            if (MARKET_TEAM_FILTER[slotName] !== undefined) {
+                return MARKET_TEAM_FILTER[slotName]; // null = all, array = filtered
+            }
+            
+            const key = filterMap[marketValue];
+            if (key && MARKET_TEAM_FILTER[key] !== undefined) {
+                return MARKET_TEAM_FILTER[key];
+            }
+            
+            return null; // null = all teams
+        }
+
+        // ─── Init ───────────────────────────────────────────────────────
+        async function init() {
+            try {
+                const [metaResp, selResp] = await Promise.all([
+                    fetch(`/api/metadata?gameId=${gameId}`),
+                    fetch(`/api/selections?gameId=${gameId}`)
+                ]);
+                const metaData = await metaResp.json();
+                const selData = await selResp.json();
+                
+                if (metaData.error) throw new Error(metaData.error);
+
+                const teamInfo = metaData.metadata.TeamInfo || {};
+                teams = {};
+                teamsList = [];
+                for (const [id, info] of Object.entries(teamInfo)) {
+                    teams[info.Name] = id;
+                    teamsList.push({ id, name: info.Name });
+                }
+                teamsList.sort((a, b) => a.name.localeCompare(b.name));
+                columns = metaData.columns || [];
+                selections = selData.selections || {};
+
+                const comp = COMPETITIONS[gameId];
+                const compName = comp ? comp.shortName : gameId;
+                document.getElementById('game-badge').textContent = `${compName}: ${teamsList.length} teams, ${Object.keys(selections).length} selections`;
+                document.getElementById('status').textContent = '● Connected (OQS + PES)';
+                document.getElementById('status').className = 'status connected';
+
+                populateSelects();
+            } catch (e) {
+                document.getElementById('status').textContent = `● Error: ${e.message}`;
+                document.getElementById('status').className = 'status error';
+            }
+        }
+
+        function populateSelects() {
+            document.querySelectorAll('.market-select').forEach(sel => {
+                const val = sel.value;
+                sel.innerHTML = '<option value="">— Select Market —</option>' +
+                    MARKETS.map(m => `<option value="${m.value}">${m.name}</option>`).join('');
+                sel.value = val;
+            });
+            // Populate team selects based on their paired market selection
+            document.querySelectorAll('.leg-row').forEach(row => {
+                const marketSel = row.querySelector('.market-select');
+                const teamSel = row.querySelector('.team-select');
+                if (teamSel) {
+                    updateTeamOptions(marketSel, teamSel);
+                }
+            });
+        }
+
+        function updateTeamOptions(marketSelect, teamSelect) {
+            const currentTeam = teamSelect.value;
+            const marketValue = marketSelect ? marketSelect.value : '';
+            const allowedTeams = getTeamsForMarket(marketValue);
+            
+            const teamsToShow = allowedTeams 
+                ? teamsList.filter(t => allowedTeams.includes(t.name))
+                : teamsList;
+
+            teamSelect.innerHTML = '<option value="">— Select Team —</option>' +
+                teamsToShow.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+            
+            // Restore previous selection if still valid
+            if (currentTeam && teamsToShow.find(t => t.name === currentTeam)) {
+                teamSelect.value = currentTeam;
+            }
+        }
+
+        function onMarketChange(marketSelect) {
+            // Find the paired team select in the same row
+            const row = marketSelect.closest('.leg-row');
+            const teamSelect = row.querySelector('.team-select');
+            updateTeamOptions(marketSelect, teamSelect);
+            updatePql();
+        }
+
+        // ─── PQL Builder ────────────────────────────────────────────────
+        function buildPql(market, team) {
+            const tid = teams[team];
+            if (!tid) return null;
+            const col = `Rank_Group_Team_${tid}`;
+            const m = market.toLowerCase();
+
+            if (m.includes('outside top')) {
+                const n = parseInt(m.match(/\d+/)?.[0]);
+                return `@${col} >= ${n + 1}`;
+            }
+            if (m.includes('bottom half')) return `@${col} >= 11`;
+            if (m.includes('relegated')) return `@${col} >= 18`;
+            if (m.includes('finish bottom')) return `@${col} == 20`;
+            if (m.includes('avoid relegation')) return `@${col} <= 17`;
+            if (m === 'winner') return `@${col} == 1`;
+            if (m.includes('finish 2nd')) return `@${col} == 2`;
+            if (m.includes('finish 3rd')) return `@${col} == 3`;
+            if (m.includes('finish 4th')) return `@${col} == 4`;
+            if (m.includes('top half')) return `@${col} <= 10`;
+
+            // Top N
+            const topN = m.match(/top (\d+)/);
+            if (topN && !m.includes('london') && !m.includes('north') && !m.includes('york') && !m.includes('midland') && !m.includes('promoted')) {
+                return `@${col} <= ${topN[1]}`;
+            }
+
+            // Regional
+            for (const [groupKey, groupTeams] of Object.entries(REGIONAL_GROUPS)) {
+                if (m.includes(groupKey)) {
+                    const rivals = groupTeams.filter(t => t !== team && teams[t]);
+                    if (!rivals.length) return `@${col} >= 1`;
+                    return rivals.map(r => `@${col} < @Rank_Group_Team_${teams[r]}`).join(' && ');
+                }
+            }
+
+            // Stats
+            if (m.includes('most goals')) {
+                const others = teamsList.filter(t => t.id !== tid);
+                return others.map(t => `@Goals_Group_Team_${tid} > @Goals_Group_Team_${t.id}`).join(' && ');
+            }
+            if (m.includes('most points')) {
+                const others = teamsList.filter(t => t.id !== tid);
+                return others.map(t => `@Points_Team_${tid} > @Points_Team_${t.id}`).join(' && ');
+            }
+
+            return null;
+        }
+
+        function updatePql() {
+            const legs = document.querySelectorAll('.leg-row');
+            const pqls = [];
+            legs.forEach(row => {
+                const market = row.querySelector('.market-select')?.value;
+                const team = row.querySelector('.team-select')?.value;
+                if (market && team) {
+                    const pql = buildPql(market, team);
+                    if (pql) pqls.push(pql.includes('&&') ? `(${pql})` : pql);
+                }
+            });
+            const full = pqls.join(' && ');
+            document.getElementById('pql-preview').textContent = full ? `PQL: ${full}` : '';
+        }
+
+        // ─── Leg Management ─────────────────────────────────────────────
+        function addLeg() {
+            const builder = document.getElementById('builder');
+            const idx = builder.children.length;
+            const row = document.createElement('div');
+            row.className = 'leg-row';
+            row.dataset.leg = idx;
+            row.innerHTML = `
+                <select class="market-select" onchange="onMarketChange(this)"><option value="">— Select Market —</option></select>
+                <select class="team-select" onchange="updatePql()"><option value="">— Select Team —</option></select>
+                <button class="remove-btn" onclick="removeLeg(this)" title="Remove">×</button>
+            `;
+            builder.appendChild(row);
+            populateSelects();
+        }
+
+        function removeLeg(btn) {
+            const row = btn.closest('.leg-row');
+            const builder = document.getElementById('builder');
+            if (builder.children.length > 1) {
+                row.remove();
+                updatePql();
+            }
+        }
+
+        function clearBuilder() {
+            const builder = document.getElementById('builder');
+            builder.innerHTML = `
+                <div class="leg-row" data-leg="0">
+                    <select class="market-select" onchange="onMarketChange(this)"><option value="">— Select Market —</option></select>
+                    <select class="team-select" onchange="updatePql()"><option value="">— Select Team —</option></select>
+                    <button class="remove-btn" onclick="removeLeg(this)" title="Remove">×</button>
+                </div>
+            `;
+            populateSelects();
+            document.getElementById('pql-preview').textContent = '';
+        }
+
+        // Market name mapping from UI values to SLOT market names
+        const MARKET_NAME_MAP = {
+            "Winner": "Outright Winner",
+            "Top 2": "Top 2 Finish",
+            "Top 3 Finish": "Top 3 Finish",
+            "Top 4": "Top 4 Finish",
+            "Top 5": "Top 5 Finish",
+            "Top 6": "Top 6 Finish",
+            "Top 7": "Top 7 Finish",
+            "Top 8": "Top 8 Finish",
+            "Top Half": "Top Half Finish",
+            "Bottom Half": "Bottom Half Finish",
+            "Avoid Relegation": "Avoid Relegation",
+            "Relegated": "To Be Relegated",
+            "To Finish Bottom": "To Finish Bottom",
+            "To Finish 2nd": "To Finish 2nd",
+            "To Finish 3rd": "To Finish 3rd",
+            "To Finish 4th": "To Finish 4th",
+            "Outside Top 4": "To Finish Outside Top 4",
+            "Outside Top 6": "To Finish Outside Top 6",
+            "Top London Club": "Top London Club",
+            "Top North West Club": "Top North West Club",
+            "Top North East Club": "Top North East Club",
+            "Top Yorkshire Club": "Top Yorkshire Club",
+            "Top Midlands Club": "Top Midlands Club",
+            "Top Northern Club": "Top Northern Club",
+            "Top Promoted Club": "Top Promoted Club",
+            "Most Goals": "Most Goals",
+            "Most Points": "Most Points",
+            "Fewest Goals Conceded": "Fewest Goals Conceded",
+        };
+
+        function getSelectionRampId(marketValue, teamName) {
+            // Map the UI market value to the actual SLOT market name
+            const slotMarketName = MARKET_NAME_MAP[marketValue] || marketValue;
+            const key = `${slotMarketName}|${teamName}`;
+            const sel = selections[key];
+            return sel ? sel.selectionRampId : null;
+        }
+
+        // ─── Calculate ──────────────────────────────────────────────────
+        async function calculatePrice() {
+            const legs = document.querySelectorAll('.leg-row');
+            const legData = [];
+            const pqls = [];
+
+            legs.forEach(row => {
+                const market = row.querySelector('.market-select')?.value;
+                const team = row.querySelector('.team-select')?.value;
+                if (market && team) {
+                    legData.push({ market, team });
+                    const pql = buildPql(market, team);
+                    if (pql) pqls.push(pql.includes('&&') ? `(${pql})` : pql);
+                }
+            });
+
+            if (!pqls.length) return;
+
+            const fullPql = pqls.join(' && ');
+            const name = legData.map(s => `${s.market} (${s.team})`).join(' + ');
+
+            // Resolve selection RAMP IDs for PES
+            const selectionIds = legData
+                .map(s => getSelectionRampId(s.market, s.team))
+                .filter(id => id !== null);
+
+            const btn = document.getElementById('calc-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Calculating...';
+
+            try {
+                const resp = await fetch('/api/price', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameId, pql: fullPql, selectionIds })
+                });
+                const data = await resp.json();
+
+                addResult(name, fullPql, data, selectionIds, legData);
+                addHistory(name, fullPql, data);
+            } catch (e) {
+                addResult(name, fullPql, { oqsError: e.message }, [], legData);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Calculate Price';
+            }
+        }
+
+        // ─── Impossible Explanations ────────────────────────────────────
+        function getImpossibleExplanation(legData) {
+            if (!legData || legData.length < 2) return null;
+
+            // Check for same-team contradictions
+            const teamLegs = {};
+            legData.forEach(leg => {
+                if (!teamLegs[leg.team]) teamLegs[leg.team] = [];
+                teamLegs[leg.team].push(leg.market);
+            });
+
+            for (const [team, markets] of Object.entries(teamLegs)) {
+                if (markets.length < 2) continue;
+                
+                // Position contradictions
+                const positions = markets.map(m => {
+                    const ml = m.toLowerCase();
+                    if (ml.includes('winner')) return {type: 'exact', pos: 1};
+                    if (ml.includes('finish 2nd')) return {type: 'exact', pos: 2};
+                    if (ml.includes('finish 3rd')) return {type: 'exact', pos: 3};
+                    if (ml.includes('finish 4th')) return {type: 'exact', pos: 4};
+                    if (ml.includes('finish bottom')) return {type: 'exact', pos: 20};
+                    if (ml.includes('relegated')) return {type: 'min', pos: 18};
+                    if (ml.includes('bottom half')) return {type: 'min', pos: 11};
+                    if (ml.includes('outside top 6')) return {type: 'min', pos: 7};
+                    if (ml.includes('outside top 4')) return {type: 'min', pos: 5};
+                    if (ml.includes('avoid relegation')) return {type: 'max', pos: 17};
+                    if (ml.includes('top half')) return {type: 'max', pos: 10};
+                    const topN = ml.match(/top (\d+)/);
+                    if (topN && !ml.includes('london') && !ml.includes('north') && !ml.includes('york') && !ml.includes('midland') && !ml.includes('promoted')) {
+                        return {type: 'max', pos: parseInt(topN[1])};
+                    }
+                    return null;
+                }).filter(p => p);
+
+                // Check for range conflicts
+                for (let i = 0; i < positions.length; i++) {
+                    for (let j = i + 1; j < positions.length; j++) {
+                        const a = positions[i], b = positions[j];
+                        
+                        // Two exact positions that differ
+                        if (a.type === 'exact' && b.type === 'exact' && a.pos !== b.pos) {
+                            return `${team} cannot finish both ${ordinal(a.pos)} and ${ordinal(b.pos)} simultaneously.`;
+                        }
+                        // Max (top N) vs Min (outside/relegated)
+                        if (a.type === 'max' && b.type === 'min' && a.pos < b.pos) {
+                            return `${team} cannot finish in the top ${a.pos} (position ≤${a.pos}) AND in position ${b.pos}+ at the same time.`;
+                        }
+                        if (b.type === 'max' && a.type === 'min' && b.pos < a.pos) {
+                            return `${team} cannot finish in the top ${b.pos} (position ≤${b.pos}) AND in position ${a.pos}+ at the same time.`;
+                        }
+                        // Exact vs range conflict
+                        if (a.type === 'exact' && b.type === 'min' && a.pos < b.pos) {
+                            return `${team} cannot finish ${ordinal(a.pos)} AND in position ${b.pos}+ at the same time.`;
+                        }
+                        if (a.type === 'exact' && b.type === 'max' && a.pos > b.pos) {
+                            return `${team} cannot finish ${ordinal(a.pos)} AND in the top ${b.pos} at the same time.`;
+                        }
+                        if (b.type === 'exact' && a.type === 'min' && b.pos < a.pos) {
+                            return `${team} cannot finish ${ordinal(b.pos)} AND in position ${a.pos}+ at the same time.`;
+                        }
+                        if (b.type === 'exact' && a.type === 'max' && b.pos > a.pos) {
+                            return `${team} cannot finish ${ordinal(b.pos)} AND in the top ${a.pos} at the same time.`;
+                        }
+                    }
+                }
+            }
+
+            // Check for uniqueness conflicts (same market, different teams)
+            const marketTeams = {};
+            legData.forEach(leg => {
+                if (!marketTeams[leg.market]) marketTeams[leg.market] = [];
+                marketTeams[leg.market].push(leg.team);
+            });
+
+            for (const [market, teams] of Object.entries(marketTeams)) {
+                const ml = market.toLowerCase();
+                // "Top X Club" markets — only one winner
+                if (ml.includes('top') && (ml.includes('club') || ml.includes('team')) && teams.length > 1) {
+                    return `Only one team can be the ${market}. ${teams.join(' and ')} cannot both win this market.`;
+                }
+                // Exact position markets with same position
+                if ((ml.includes('winner') || ml.includes('finish 2nd') || ml.includes('finish 3rd') || ml.includes('finish 4th') || ml.includes('finish bottom')) && teams.length > 1) {
+                    return `Only one team can hold this position. ${teams.join(' and ')} cannot both be ${market}.`;
+                }
+            }
+
+            // Check for capacity overflow (e.g. 4 teams in top 3)
+            const topNLegs = legData.filter(l => {
+                const ml = l.market.toLowerCase();
+                return ml.match(/top (\d+)/) && !ml.includes('club') && !ml.includes('team');
+            });
+            if (topNLegs.length > 0) {
+                const nMatch = topNLegs[0].market.toLowerCase().match(/top (\d+)/);
+                if (nMatch) {
+                    const n = parseInt(nMatch[1]);
+                    const uniqueTeams = [...new Set(topNLegs.map(l => l.team))];
+                    if (uniqueTeams.length > n) {
+                        return `Only ${n} teams can finish in the top ${n}, but ${uniqueTeams.length} teams were selected (${uniqueTeams.join(', ')}).`;
+                    }
+                }
+            }
+
+            return "No simulations in the outcomes matrix satisfy all these conditions simultaneously.";
+        }
+
+        function ordinal(n) {
+            const s = ['th','st','nd','rd'];
+            const v = n % 100;
+            return n + (s[(v-20)%10] || s[v] || s[0]);
+        }
+
+        function addResult(name, pql, data, selectionIds, legData) {
+            const container = document.getElementById('results-container');
+            if (container.querySelector('.empty-state')) container.innerHTML = '';
+
+            // Track for confluence export
+            lastResults.unshift({ name, pql, oqsPrice: data.oqsPrice, pesPrice: data.pesPrice, impossible: data.impossible });
+            document.getElementById('confluence-export-btn').style.display = 'inline-block';
+
+            // Update URL hash
+            if (legData && legData.length) updateUrlHash(legData);
+
+            const card = document.createElement('div');
+            let className = 'result-card';
+
+            const oqsPrice = data.oqsPrice;
+            const pesPrice = data.pesPrice;
+            const impossible = data.impossible;
+            const oqsError = data.oqsError;
+            const pesError = data.pesError;
+            const isMulti = selectionIds && selectionIds.length > 1;
+
+            if (oqsError && pesError) {
+                className += ' error';
+            } else if (impossible) {
+                className += ' impossible';
+            } else {
+                className += ' valid';
+            }
+
+            // Build price display
+            let pricesHtml = '<div class="result-prices">';
+            
+            if (impossible) {
+                const explanation = getImpossibleExplanation(legData);
+                pricesHtml += `<div class="price-group"><div class="value impossible">IMPOSSIBLE</div><div style="font-size:0.65em;color:var(--text-muted);margin-top:3px;">No simulations satisfy this</div></div>`;
+                if (explanation) {
+                    pricesHtml += `<div class="price-group" style="text-align:left;max-width:300px"><div style="font-size:0.8em;color:#ef5350;margin-top:4px;">💡 ${explanation}</div></div>`;
+                }
+            } else {
+                // OQS Price
+                if (oqsPrice !== null && oqsPrice !== undefined) {
+                    pricesHtml += `<div class="price-group">
+                        <div class="tooltip-wrapper">
+                            <div class="price-label">OQS</div>
+                            <span class="tooltip-text"><strong>OQS (OBP Query Server)</strong><br>Evaluates PQL directly against SLOT's outcomes matrix. Counts simulations where ALL conditions are simultaneously true.<br><br>✅ <strong>Reliable for both singles and multis.</strong> This is the source of truth for same-event outright combos.</span>
+                        </div>
+                        <div class="value oqs" data-decimal-price="${oqsPrice}">${formatPrice(oqsPrice)}</div>
+                    </div>`;
+                } else if (oqsError) {
+                    pricesHtml += `<div class="price-group">
+                        <div class="tooltip-wrapper"><div class="price-label">OQS</div><span class="tooltip-text">OQS returned an error. SLOT NXT may be unavailable.</span></div>
+                        <div class="value" style="color:#ff9800;font-size:0.8em">Error</div>
+                    </div>`;
+                }
+                
+                // PES Price
+                if (pesPrice !== null && pesPrice !== undefined) {
+                    const pesReliable = !isMulti;
+                    const pesTooltip = isMulti
+                        ? `<strong>PES (Probabilistic Event Simulation)</strong><br>For multi-leg same-event combos, PES combines individual leg probabilities with a correlation factor. This does NOT evaluate joint feasibility against the matrix. Use OQS for same-event outright combos.`
+                        : `<strong>PES (Probabilistic Event Simulation)</strong><br>For singles, PES reads the same outcomes matrix as OQS and returns the probability of this single selection occurring. Should match OQS exactly.`;
+                    const valueClass = pesReliable ? 'pes' : 'unreliable';
+
+                    pricesHtml += `<div class="price-group">
+                        <div class="tooltip-wrapper">
+                            <div class="price-label">PES</div>
+                            <span class="tooltip-text">${pesTooltip}</span>
+                        </div>
+                        <div class="value ${valueClass}" data-decimal-price="${pesPrice}">${formatPrice(pesPrice)}</div>
+                    </div>`;
+                } else if (pesError) {
+                    pricesHtml += `<div class="price-group">
+                        <div class="tooltip-wrapper"><div class="price-label">PES</div><span class="tooltip-text">PES returned an error. The endpoint may be unreachable.</span></div>
+                        <div class="value" style="color:#ff9800;font-size:0.8em">Error</div>
+                    </div>`;
+                } else if (!selectionIds || selectionIds.length === 0) {
+                    pricesHtml += `<div class="price-group">
+                        <div class="tooltip-wrapper"><div class="price-label">PES</div><span class="tooltip-text">No selection RAMP ID found for this market/team combination in SLOT. PES requires RAMP IDs to query.</span></div>
+                        <div class="value" style="color:#666;font-size:0.8em">No ID</div>
+                    </div>`;
+                }
+
+                // SOCOQS Price (round-trip verification)
+                const socoqsPrice = data.socoqsPrice;
+                if (socoqsPrice !== null && socoqsPrice !== undefined) {
+                    pricesHtml += `<div class="price-group">
+                        <div class="tooltip-wrapper">
+                            <div class="price-label">SOCOQS</div>
+                            <span class="tooltip-text"><strong>SOCOQS (Soccer Outcome Query Server)</strong><br>Evaluates the same PQL expression through the Rust probability-ops engine — the round-trip verification used for PETS testing.<br><br>Should match OQS exactly since both use the same underlying engine. Used to prove a translated expression means the same thing as the original.</span>
+                        </div>
+                        <div class="value" style="color:#ffb74d" data-decimal-price="${socoqsPrice}">${formatPrice(socoqsPrice)}</div>
+                    </div>`;
+                } else if (data.socoqsError) {
+                    pricesHtml += `<div class="price-group">
+                        <div class="tooltip-wrapper"><div class="price-label">SOCOQS</div><span class="tooltip-text">SOCOQS returned an error or the matrix isn't loaded for this event.</span></div>
+                        <div class="value" style="color:#ff9800;font-size:0.8em">Error</div>
+                    </div>`;
+                }
+
+                // Match indicator
+                if (oqsPrice && pesPrice) {
+                    const diff = Math.abs(oqsPrice - pesPrice);
+                    const pct = (diff / oqsPrice * 100).toFixed(2);
+                    const color = diff < 0.01 ? '#66bb6a' : parseFloat(pct) > 5 ? '#ef5350' : '#ff9800';
+                    const tooltip = isMulti
+                        ? `PES and OQS differ by ${pct}% because PES uses a different calculation for same-event multi-leg combos. OQS counts simulations where all conditions are true simultaneously. PES multiplies individual probabilities with a correlation adjustment. For same-event outrights, OQS is correct.`
+                        : diff < 0.01
+                            ? 'PES and OQS agree — both are reading the same matrix and evaluating the same condition.'
+                            : `PES and OQS differ by ${pct}%. This may indicate a matrix sync issue.`;
+                    const label = diff < 0.01 ? 'Match' : 'Diff';
+                    const display = diff < 0.01 ? '✅' : `${pct}%`;
+                    pricesHtml += `<div class="price-group">
+                        <div class="tooltip-wrapper"><div class="price-label">${label}</div><span class="tooltip-text">${tooltip}</span></div>
+                        <div class="value" style="color:${color}">${display}</div>
+                    </div>`;
+                }
+            }
+            pricesHtml += '</div>';
+
+            // Probability
+            let probHtml = '';
+            if (oqsPrice && !impossible) {
+                const prob = (1 / oqsPrice * 100).toFixed(1);
+                probHtml = `<span class="result-prob">implied probability: ${prob}%</span>`;
+            }
+
+            card.className = className;
+            const starred = isFavourite(name) ? 'starred' : '';
+            const legDataJson = JSON.stringify(legData || []).replace(/"/g, '&quot;');
+            const resultIdx = lastResults.length - 1;
+            card.innerHTML = `
+                <div class="result-header">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" class="result-checkbox" data-index="${resultIdx}" checked>
+                        <span class="result-name">${name}</span>
+                    </label>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                        <button class="fav-btn ${starred}" onclick="toggleFavCard(this, '${name.replace(/'/g, "\\'")}', '${legDataJson}')" title="Favourite">★</button>
+                        <button class="remove-btn" onclick="deleteResult(this)" title="Remove" style="width:24px;height:24px;font-size:0.9em;">×</button>
+                    </div>
+                </div>
+                ${pricesHtml}
+                ${probHtml}
+                <div class="result-pql">${pql}</div>
+            `;
+
+            container.insertBefore(card, container.firstChild);
+        }
+
+        function toggleFavCard(btn, name, legDataJson) {
+            const legData = JSON.parse(legDataJson.replace(/&quot;/g, '"'));
+            toggleFavourite(name, legData);
+            btn.classList.toggle('starred');
+        }
+
+        // ─── Singles ────────────────────────────────────────────────────
+        async function loadSingles() {
+            const market = document.getElementById('singles-market').value;
+            const grid = document.getElementById('singles-grid');
+            
+            // Filter teams for this market
+            const allowedTeams = getTeamsForMarket(market);
+            const teamsToShow = allowedTeams 
+                ? teamsList.filter(t => allowedTeams.includes(t.name))
+                : teamsList;
+
+            grid.innerHTML = teamsToShow.map(t =>
+                `<div class="single-card loading" id="single-${t.id}">
+                    <div class="team-name">${t.name}</div>
+                    <div class="price" title="OQS">...</div>
+                    <div style="font-size:0.65em;color:#ce93d8;margin-top:2px" class="pes-price"></div>
+                    <div style="font-size:0.65em;color:#ffb74d;margin-top:1px" class="socoqs-price"></div>
+                    <div style="font-size:0.6em;margin-top:1px" class="diff-price"></div>
+                </div>`
+            ).join('');
+
+            // Fire all requests in parallel for speed
+            const promises = teamsToShow.map(async (t) => {
+                const pql = buildPql(market, t.name);
+                if (!pql) return;
+                
+                const selId = getSelectionRampId(market, t.name);
+                const selectionIds = selId ? [selId] : [];
+
+                try {
+                    const resp = await fetch('/api/price', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ gameId, pql, selectionIds })
+                    });
+                    const data = await resp.json();
+                    const card = document.getElementById(`single-${t.id}`);
+                    if (card) {
+                        card.classList.remove('loading');
+                        const priceEl = card.querySelector('.price');
+                        const pesEl = card.querySelector('.pes-price');
+                        const socoqsEl = card.querySelector('.socoqs-price');
+                        if (data.impossible) {
+                            priceEl.textContent = '—';
+                            priceEl.style.color = '#666';
+                        } else if (data.oqsPrice) {
+                            priceEl.textContent = `OQS: ${formatPrice(data.oqsPrice, 2)}`;
+                            priceEl.dataset.decimalPrice = data.oqsPrice;
+                            priceEl.style.color = '#4fc3f7';
+                        }
+                        if (data.pesPrice && pesEl) {
+                            pesEl.textContent = `PES: ${formatPrice(data.pesPrice, 2)}`;
+                            pesEl.dataset.decimalPrice = data.pesPrice;
+                        }
+                        if (data.socoqsPrice && socoqsEl) {
+                            socoqsEl.textContent = `SOCOQS: ${formatPrice(data.socoqsPrice, 2)}`;
+                            socoqsEl.dataset.decimalPrice = data.socoqsPrice;
+                        }
+                        const diffEl = card.querySelector('.diff-price');
+                        if (data.oqsPrice && data.pesPrice && diffEl) {
+                            const diffVal = Math.abs(data.oqsPrice - data.pesPrice);
+                            const pct = (diffVal / data.oqsPrice * 100).toFixed(2);
+                            const color = diffVal < 0.01 ? '#66bb6a' : pct > 5 ? '#ef5350' : '#ff9800';
+                            diffEl.innerHTML = `<span style="color:${color}">Δ ${pct}%</span>`;
+                        }
+                    }
+                } catch (e) { /* skip */ }
+            });
+            await Promise.all(promises);
+        }
+
+        // ─── History ────────────────────────────────────────────────────
+        function clearResults() {
+            document.getElementById('results-container').innerHTML = '<div class="empty-state">Build a scenario above and click Calculate Price</div>';
+            lastResults = [];
+        }
+
+        function deleteResult(btn) {
+            const card = btn.closest('.result-card');
+            if (card) {
+                card.style.transition = 'opacity 0.2s, transform 0.2s';
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(20px)';
+                setTimeout(() => {
+                    card.remove();
+                    // Check if container is empty
+                    const container = document.getElementById('results-container');
+                    if (!container.querySelector('.result-card')) {
+                        container.innerHTML = '<div class="empty-state">Build a scenario above and click Calculate Price</div>';
+                    }
+                }, 200);
+            }
+        }
+
+        function clearHistory() {
+            history = [];
+            renderHistory();
+        }
+
+        function addHistory(name, pql, data) {
+            const time = new Date().toLocaleTimeString();
+            let oqs = data.oqsError ? 'ERR' : data.impossible ? 'IMPOSSIBLE' : data.oqsPrice ? data.oqsPrice.toFixed(4) : '-';
+            let pes = data.pesError ? 'ERR' : data.pesPrice ? data.pesPrice.toFixed(4) : '-';
+            let diff = '-';
+            if (data.oqsPrice && data.pesPrice) {
+                const pct = (Math.abs(data.oqsPrice - data.pesPrice) / data.oqsPrice * 100).toFixed(2);
+                diff = pct + '%';
+            }
+            history.unshift({ time, name, oqs, pes, diff, pql, oqsRaw: data.oqsPrice, pesRaw: data.pesPrice, impossible: data.impossible });
+
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const tbody = document.getElementById('history-body');
+            if (!history.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No queries yet</td></tr>';
+                return;
+            }
+            tbody.innerHTML = history.map((h, i) => {
+                const diffColor = h.diff === '-' ? '#666' : parseFloat(h.diff) < 0.01 ? '#66bb6a' : parseFloat(h.diff) > 5 ? '#ef5350' : '#ff9800';
+                return `<tr>
+                    <td><input type="checkbox" class="history-checkbox" data-index="${i}"></td>
+                    <td>${h.time}</td>
+                    <td>${h.name}</td>
+                    <td style="color:#4fc3f7">${h.oqs}</td>
+                    <td style="color:#ce93d8">${h.pes}</td>
+                    <td style="color:${diffColor}">${h.diff}</td>
+                    <td style="font-family:monospace;font-size:0.75em;max-width:200px;overflow:hidden;text-overflow:ellipsis">${h.pql}</td>
+                    <td><button class="remove-btn" onclick="deleteHistoryRow(${i})" title="Remove" style="width:22px;height:22px;font-size:0.8em;">×</button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function deleteHistoryRow(index) {
+            history.splice(index, 1);
+            renderHistory();
+        }
+
+        function toggleAllHistory(checkbox) {
+            document.querySelectorAll('.history-checkbox').forEach(cb => cb.checked = checkbox.checked);
+        }
+
+        function selectAllHistory() {
+            const allCheckbox = document.getElementById('history-select-all');
+            allCheckbox.checked = true;
+            toggleAllHistory(allCheckbox);
+        }
+
+        async function exportSelectedToConfluence() {
+            const selected = [];
+            document.querySelectorAll('.history-checkbox:checked').forEach(cb => {
+                const idx = parseInt(cb.dataset.index);
+                if (history[idx]) selected.push(history[idx]);
+            });
+
+            if (!selected.length) {
+                showToast('Select some rows first');
+                return;
+            }
+
+            // Build the results for the export endpoint
+            const exportData = selected.map(h => ({
+                name: h.name,
+                oqsPrice: h.oqsRaw || null,
+                pesPrice: h.pesRaw || null,
+                impossible: h.impossible || false,
+                pql: h.pql,
+            }));
+
+            try {
+                const resp = await fetch('/api/confluence/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ results: exportData })
+                });
+                const data = await resp.json();
+                if (data.html) {
+                    await navigator.clipboard.writeText(data.html);
+                    showToast(`✅ Copied ${selected.length} rows as Confluence HTML to clipboard!`);
+                } else {
+                    showToast('Error: ' + (data.error || 'No HTML returned'));
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message);
+            }
+        }
+
+        // ─── Tabs ───────────────────────────────────────────────────────
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = 'none');
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tab}`).style.display = 'block';
+
+            // Auto-load all team stats when the Stats tab is opened (if empty)
+            if (tab === 'stats') {
+                const resultsDiv = document.getElementById('stats-results');
+                if (resultsDiv && !resultsDiv.querySelector('.data-table') && !resultsDiv.querySelector('.result-card')) {
+                    loadAllStats();
+                }
+            }
+        }
+
+        // ─── Favourites ─────────────────────────────────────────────────
+        let favourites = JSON.parse(localStorage.getItem('epl-favourites') || '[]');
+
+        function saveFavourites() {
+            localStorage.setItem('epl-favourites', JSON.stringify(favourites));
+            renderFavourites();
+        }
+
+        function toggleFavourite(name, legData) {
+            const idx = favourites.findIndex(f => f.name === name);
+            if (idx >= 0) {
+                favourites.splice(idx, 1);
+            } else {
+                favourites.push({ name, legData });
+            }
+            saveFavourites();
+        }
+
+        function isFavourite(name) {
+            return favourites.some(f => f.name === name);
+        }
+
+        function renderFavourites() {
+            const section = document.getElementById('favourites-section');
+            const list = document.getElementById('favourites-list');
+            if (favourites.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+            list.innerHTML = favourites.map((fav, i) => `
+                <span class="fav-chip" onclick="rerunFavourite(${i})">
+                    ⭐ ${fav.name}
+                    <span class="remove-fav" onclick="event.stopPropagation();removeFavourite(${i})">×</span>
+                </span>
+            `).join('');
+        }
+
+        function removeFavourite(idx) {
+            favourites.splice(idx, 1);
+            saveFavourites();
+        }
+
+        async function rerunFavourite(idx) {
+            const fav = favourites[idx];
+            if (!fav || !fav.legData) return;
+            // Populate builder with the favourite's legs
+            const builder = document.getElementById('builder');
+            builder.innerHTML = '';
+            fav.legData.forEach((leg, i) => {
+                const row = document.createElement('div');
+                row.className = 'leg-row';
+                row.dataset.leg = i;
+                row.innerHTML = `
+                    <select class="market-select" onchange="onMarketChange(this)"><option value="">— Select Market —</option></select>
+                    <select class="team-select" onchange="updatePql()"><option value="">— Select Team —</option></select>
+                    <button class="remove-btn" onclick="removeLeg(this)" title="Remove">×</button>
+                `;
+                builder.appendChild(row);
+            });
+            populateSelects();
+            // Set values
+            const rows = builder.querySelectorAll('.leg-row');
+            fav.legData.forEach((leg, i) => {
+                if (rows[i]) {
+                    rows[i].querySelector('.market-select').value = leg.market;
+                    onMarketChange(rows[i].querySelector('.market-select'));
+                    rows[i].querySelector('.team-select').value = leg.team;
+                }
+            });
+            updatePql();
+            // Switch to results tab and calculate
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = 'none');
+            document.querySelector('.tab').classList.add('active');
+            document.getElementById('tab-results').style.display = 'block';
+            await calculatePrice();
+        }
+
+        renderFavourites();
+
+        // ─── URL Sharing ────────────────────────────────────────────────
+        function updateUrlHash(legData) {
+            const encoded = legData.map(l => `${encodeURIComponent(l.market)}~${encodeURIComponent(l.team)}`).join(',');
+            window.location.hash = encoded;
+        }
+
+        function loadFromHash() {
+            const hash = window.location.hash.slice(1);
+            if (!hash) return false;
+            try {
+                const legs = hash.split(',').map(part => {
+                    const [market, team] = part.split('~').map(decodeURIComponent);
+                    return { market, team };
+                }).filter(l => l.market && l.team);
+                if (legs.length === 0) return false;
+                
+                const builder = document.getElementById('builder');
+                builder.innerHTML = '';
+                legs.forEach((leg, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'leg-row';
+                    row.dataset.leg = i;
+                    row.innerHTML = `
+                        <select class="market-select" onchange="onMarketChange(this)"><option value="">— Select Market —</option></select>
+                        <select class="team-select" onchange="updatePql()"><option value="">— Select Team —</option></select>
+                        <button class="remove-btn" onclick="removeLeg(this)" title="Remove">×</button>
+                    `;
+                    builder.appendChild(row);
+                });
+                populateSelects();
+                const rows = builder.querySelectorAll('.leg-row');
+                legs.forEach((leg, i) => {
+                    if (rows[i]) {
+                        rows[i].querySelector('.market-select').value = leg.market;
+                        onMarketChange(rows[i].querySelector('.market-select'));
+                        rows[i].querySelector('.team-select').value = leg.team;
+                    }
+                });
+                updatePql();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // ─── Confluence Export ───────────────────────────────────────────
+        let lastResults = [];
+
+        function selectAllResults() {
+            document.querySelectorAll('.result-checkbox').forEach(cb => cb.checked = true);
+        }
+
+        async function exportToConfluence() {
+            // Get selected results
+            const selected = [];
+            document.querySelectorAll('.result-checkbox:checked').forEach(cb => {
+                const idx = parseInt(cb.dataset.index);
+                if (lastResults[idx]) selected.push(lastResults[idx]);
+            });
+
+            if (selected.length === 0) {
+                showToast('Select some results first (use checkboxes)');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/confluence/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ results: selected })
+                });
+                const data = await resp.json();
+                if (data.html) {
+                    await navigator.clipboard.writeText(data.html);
+                    showToast(`✅ Copied ${selected.length} results as Confluence HTML to clipboard!`);
+                } else {
+                    showToast('Export failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                showToast('Export failed: ' + e.message);
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--bg-panel);border:1px solid var(--accent);color:var(--text);padding:12px 20px;border-radius:8px;font-size:0.85em;z-index:1000;box-shadow:0 4px 16px var(--shadow-strong);animation:fadeInUp 0.3s;';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ─── Staleness Check ────────────────────────────────────────────
+        async function checkStaleness() {
+            const badge = document.getElementById('matrix-badge');
+            try {
+                const resp = await fetch('/api/staleness');
+                const data = await resp.json();
+                if (data.stale) {
+                    const banner = document.getElementById('staleness-banner');
+                    document.getElementById('staleness-msg').textContent = `Matrix has not updated in ${data.daysSinceChange} day${data.daysSinceChange !== 1 ? 's' : ''}. Prices may be outdated.`;
+                    banner.classList.add('visible');
+                    badge.textContent = `⚠️ Matrix: ${data.daysSinceChange}d stale`;
+                    badge.style.borderColor = 'rgba(255,193,7,0.5)';
+                    badge.style.color = '#ffc107';
+                } else {
+                    badge.textContent = '✅ Matrix: current';
+                    badge.style.borderColor = 'rgba(102,187,106,0.4)';
+                    badge.style.color = '#66bb6a';
+                }
+            } catch (e) {
+                badge.textContent = '❌ Matrix: error';
+                badge.style.borderColor = 'rgba(239,83,80,0.4)';
+                badge.style.color = '#ef5350';
+            }
+        }
+
+        async function refreshMatrix() {
+            const badge = document.getElementById('matrix-badge');
+            badge.textContent = '🔄 Matrix: checking...';
+            badge.style.borderColor = 'rgba(79,195,247,0.3)';
+            badge.style.color = '#4fc3f7';
+
+            try {
+                const resp = await fetch('/api/refresh');
+                const data = await resp.json();
+                
+                if (data.changedCount > 0) {
+                    badge.textContent = `🆕 Matrix: ${data.changedCount} prices updated!`;
+                    badge.style.borderColor = 'rgba(102,187,106,0.5)';
+                    badge.style.color = '#66bb6a';
+                    // Hide stale banner
+                    document.getElementById('staleness-banner').classList.remove('visible');
+                    // Show toast
+                    alert(`Matrix updated! ${data.changedCount} prices changed.\n\n${data.message}`);
+                } else {
+                    badge.textContent = '✅ Matrix: current (no changes)';
+                    badge.style.borderColor = 'rgba(102,187,106,0.4)';
+                    badge.style.color = '#66bb6a';
+                }
+
+                if (data.fixtureUpdatedAt) {
+                    badge.title = `Last fixture config update: ${data.fixtureUpdatedAt}\nClick to check for matrix updates`;
+                }
+            } catch (e) {
+                badge.textContent = '❌ Refresh failed';
+                badge.style.borderColor = 'rgba(239,83,80,0.4)';
+                badge.style.color = '#ef5350';
+            }
+        }
+
+        // ─── Batch Runner ───────────────────────────────────────────────
+        let batchResultsData = [];
+
+        function handleBatchFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const content = e.target.result;
+                const fileName = file.name.toLowerCase();
+                
+                document.getElementById('batch-progress-container').style.display = 'block';
+                document.getElementById('batch-progress-bar').style.width = '10%';
+                document.getElementById('batch-progress-text').textContent = 'Uploading and processing...';
+
+                try {
+                    let body, contentType;
+                    if (fileName.endsWith('.json')) {
+                        body = content;
+                        contentType = 'application/json';
+                    } else {
+                        // CSV - wrap in JSON format expected by backend
+                        const lines = content.trim().split('\n').filter(l => l.trim());
+                        const scenarios = lines.map(line => {
+                            const parts = line.split(',');
+                            const name = parts[0].trim();
+                            const selections = parts.slice(1).map(p => {
+                                const [market, team] = p.trim().split('|');
+                                return { market, team };
+                            });
+                            return { name, selections };
+                        });
+                        body = JSON.stringify({ scenarios });
+                        contentType = 'application/json';
+                    }
+
+                    document.getElementById('batch-progress-bar').style.width = '40%';
+                    document.getElementById('batch-progress-text').textContent = 'Running scenarios...';
+
+                    const resp = await fetch('/api/batch-run', {
+                        method: 'POST',
+                        headers: { 'Content-Type': contentType },
+                        body: body
+                    });
+                    const data = await resp.json();
+
+                    document.getElementById('batch-progress-bar').style.width = '100%';
+                    document.getElementById('batch-progress-text').textContent = `Complete — ${data.results ? data.results.length : 0} scenarios processed`;
+
+                    if (data.results) {
+                        batchResultsData = data.results;
+                        renderBatchResults(data.results);
+                    } else if (data.error) {
+                        document.getElementById('batch-progress-text').textContent = 'Error: ' + data.error;
+                    }
+                } catch (e) {
+                    document.getElementById('batch-progress-text').textContent = 'Error: ' + e.message;
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function renderBatchResults(results) {
+            const container = document.getElementById('batch-results');
+            const tbody = document.getElementById('batch-results-body');
+            container.style.display = 'block';
+            tbody.innerHTML = results.map(r => {
+                const status = r.impossible ? '<span style="color:#ef5350">Impossible</span>' :
+                               r.error ? '<span style="color:#ff9800">Error</span>' :
+                               '<span style="color:#66bb6a">Valid</span>';
+                const oqs = r.oqsPrice ? `<span data-decimal-price="${r.oqsPrice}">${formatPrice(r.oqsPrice)}</span>` : '—';
+                const pes = r.pesPrice ? `<span data-decimal-price="${r.pesPrice}">${formatPrice(r.pesPrice)}</span>` : '—';
+                const socoqs = r.socoqsPrice ? `<span data-decimal-price="${r.socoqsPrice}">${formatPrice(r.socoqsPrice)}</span>` : '—';
+                let diff = '—';
+                if (r.oqsPrice && r.pesPrice) {
+                    const diffVal = Math.abs(r.oqsPrice - r.pesPrice);
+                    const pct = (diffVal / r.oqsPrice * 100).toFixed(2);
+                    const color = diffVal < 0.01 ? '#66bb6a' : pct > 5 ? '#ef5350' : '#ff9800';
+                    diff = `<span style="color:${color}">${pct}%</span>`;
+                }
+                return `<tr><td>${r.name || r.scenario || ''}</td><td style="color:var(--accent)">${oqs}</td><td style="color:#ce93d8">${pes}</td><td style="color:#ffb74d">${socoqs}</td><td>${diff}</td><td>${status}</td></tr>`;
+            }).join('');
+        }
+
+        function exportBatchCsv() {
+            if (!batchResultsData.length) return;
+            const header = 'Scenario,OQS Price,PES Price,SOCOQS Price,Diff %,Status\n';
+            const rows = batchResultsData.map(r => {
+                const status = r.impossible ? 'Impossible' : r.error ? 'Error' : 'Valid';
+                const diff = (r.oqsPrice && r.pesPrice) ? (Math.abs(r.oqsPrice - r.pesPrice) / r.oqsPrice * 100).toFixed(2) : '';
+                return `"${r.name || r.scenario || ''}",${r.oqsPrice || ''},${r.pesPrice || ''},${r.socoqsPrice || ''},${diff},${status}`;
+            }).join('\n');
+            const csv = header + rows;
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'batch-results.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ─── Snapshots ──────────────────────────────────────────────────
+        let snapshotsData = [];
+
+        async function saveSnapshot() {
+            try {
+                const resp = await fetch('/api/snapshot/save', { method: 'POST' });
+                const data = await resp.json();
+                if (data.error) { showToast('Error: ' + data.error); return; }
+                showToast('Snapshot saved!');
+                loadSnapshotsList();
+            } catch (e) {
+                showToast('Error saving snapshot: ' + e.message);
+            }
+        }
+
+        async function loadSnapshotsList() {
+            try {
+                const resp = await fetch('/api/snapshot/list');
+                const data = await resp.json();
+                snapshotsData = data.snapshots || [];
+                const container = document.getElementById('snapshots-list');
+                if (snapshotsData.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No snapshots saved yet</div>';
+                    document.getElementById('price-history-section').style.display = 'none';
+                    return;
+                }
+                container.innerHTML = snapshotsData.map((s, i) => `
+                    <div class="snapshot-item">
+                        <div>
+                            <div class="snapshot-name">${s.name || s.filename || 'Snapshot ' + (i+1)}</div>
+                            <div class="snapshot-date">${s.timestamp || s.date || ''}</div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="compareSnapshot('${s.filename || s.id || s.name}')" style="font-size:0.78em;">Compare vs Now</button>
+                    </div>
+                `).join('');
+                // Show price history section if multiple snapshots
+                if (snapshotsData.length >= 2) {
+                    document.getElementById('price-history-section').style.display = 'block';
+                    populateHistoryChartDropdowns();
+                }
+            } catch (e) { /* silently ignore */ }
+        }
+
+        async function compareSnapshot(snapshotId) {
+            try {
+                const resp = await fetch('/api/snapshot/compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ snapshot: snapshotId })
+                });
+                const data = await resp.json();
+                if (data.error) { showToast('Error: ' + data.error); return; }
+                renderSnapshotComparison(data.diffs || data.results || []);
+            } catch (e) {
+                showToast('Error comparing: ' + e.message);
+            }
+        }
+
+        function renderSnapshotComparison(diffs) {
+            const section = document.getElementById('snapshot-compare-results');
+            const tbody = document.getElementById('snapshot-compare-body');
+            section.style.display = 'block';
+            if (!diffs || diffs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">✅ No price changes detected. Matrix is identical to this snapshot.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = diffs.map(d => {
+                // Backend returns: selection, snapshotPrice, currentPrice, change, changePct
+                const parts = (d.selection || '').split('|');
+                const market = parts[0] || d.market || '';
+                const team = parts[1] || d.team || '';
+                const then = d.snapshotPrice || d.then || null;
+                const now = d.currentPrice || d.now || null;
+                const change = d.change || 0;
+                const pctChange = d.changePct !== undefined ? d.changePct.toFixed(2) : d.percentChange !== undefined ? d.percentChange.toFixed(2) : then ? ((change / then) * 100).toFixed(2) : '0.00';
+                const absPct = Math.abs(parseFloat(pctChange));
+                const dirClass = parseFloat(pctChange) > 0 ? 'diff-positive' : parseFloat(pctChange) < 0 ? 'diff-negative' : '';
+                const highlightClass = absPct > 1 ? ' highlight' : '';
+                return `<tr class="${highlightClass}">
+                    <td>${market}</td>
+                    <td>${team}</td>
+                    <td><span data-decimal-price="${then || 0}">${then ? formatPrice(then) : '—'}</span></td>
+                    <td><span data-decimal-price="${now || 0}">${now ? formatPrice(now) : '—'}</span></td>
+                    <td class="${dirClass}">${change ? (change > 0 ? '+' : '') + change.toFixed(4) : '0'}</td>
+                    <td class="${dirClass}">${pctChange}%</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ─── Price History Chart (Canvas) ───────────────────────────────
+        function populateHistoryChartDropdowns() {
+            const marketSel = document.getElementById('history-chart-market');
+            const teamSel = document.getElementById('history-chart-team');
+            marketSel.innerHTML = MARKETS.map(m => `<option value="${m.value}">${m.name}</option>`).join('');
+            teamSel.innerHTML = teamsList.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+        }
+
+        async function drawPriceHistoryChart() {
+            const market = document.getElementById('history-chart-market').value;
+            const team = document.getElementById('history-chart-team').value;
+            if (!market || !team) return;
+
+            // Fetch all snapshots and extract prices for this team+market
+            const points = [];
+            for (const snap of snapshotsData) {
+                try {
+                    const resp = await fetch('/api/snapshot/compare', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ snapshot: snap.filename || snap.id || snap.name })
+                    });
+                    const data = await resp.json();
+                    const diffs = data.diffs || data.results || [];
+                    const match = diffs.find(d => d.market === market && d.team === team);
+                    if (match && match.then) {
+                        points.push({ time: snap.timestamp || snap.date || '', price: match.then });
+                    }
+                } catch (e) { /* skip */ }
+            }
+            // Add current price
+            try {
+                const resp = await fetch(`/api/margin?market=${encodeURIComponent(market)}`);
+                const data = await resp.json();
+                if (data.prices) {
+                    const current = data.prices.find(p => p.team === team);
+                    if (current) points.push({ time: 'Now', price: current.price });
+                }
+            } catch (e) { /* skip */ }
+
+            if (points.length < 2) {
+                showToast('Not enough data points for chart');
+                return;
+            }
+            drawCanvasChart(points);
+        }
+
+        function drawCanvasChart(points) {
+            const canvas = document.getElementById('price-history-canvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const padding = { top: 20, right: 20, bottom: 30, left: 60 };
+
+            ctx.clearRect(0, 0, w, h);
+
+            const prices = points.map(p => p.price);
+            const minP = Math.min(...prices) * 0.95;
+            const maxP = Math.max(...prices) * 1.05;
+            const rangeP = maxP - minP || 1;
+
+            const plotW = w - padding.left - padding.right;
+            const plotH = h - padding.top - padding.bottom;
+
+            // Draw grid
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding.top + (plotH * i / 4);
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(w - padding.right, y);
+                ctx.stroke();
+                // Label
+                const val = maxP - (rangeP * i / 4);
+                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#666';
+                ctx.font = '10px -apple-system, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(val.toFixed(2), padding.left - 8, y + 4);
+            }
+
+            // Draw line
+            ctx.strokeStyle = '#4fc3f7';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            points.forEach((p, i) => {
+                const x = padding.left + (plotW * i / (points.length - 1));
+                const y = padding.top + plotH - ((p.price - minP) / rangeP * plotH);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Draw dots
+            ctx.fillStyle = '#4fc3f7';
+            points.forEach((p, i) => {
+                const x = padding.left + (plotW * i / (points.length - 1));
+                const y = padding.top + plotH - ((p.price - minP) / rangeP * plotH);
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // X labels
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#666';
+            ctx.font = '9px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            points.forEach((p, i) => {
+                const x = padding.left + (plotW * i / (points.length - 1));
+                const label = p.time.length > 10 ? p.time.slice(5, 16) : p.time;
+                ctx.fillText(label, x, h - 8);
+            });
+        }
+
+        // ─── Probability Table ──────────────────────────────────────────
+        let probTableData = [];
+        let probSortCol = 'team';
+        let probSortDir = 'asc';
+
+        function populateProbMarketSelect() {
+            const sel = document.getElementById('prob-market-select');
+            if (sel) sel.innerHTML = MARKETS.map(m => `<option value="${m.value}">${m.name}</option>`).join('');
+            const corr1 = document.getElementById('corr-market1');
+            const corr2 = document.getElementById('corr-market2');
+            if (corr1) corr1.innerHTML = MARKETS.map(m => `<option value="${m.value}">${m.name}</option>`).join('');
+            if (corr2) {
+                corr2.innerHTML = MARKETS.map(m => `<option value="${m.value}">${m.name}</option>`).join('');
+                if (MARKETS.length > 1) corr2.selectedIndex = 1;
+            }
+        }
+
+        async function loadProbabilityTable() {
+            const market = document.getElementById('prob-market-select').value;
+            if (!market) return;
+            const container = document.getElementById('prob-table-container');
+            const statsDiv = document.getElementById('prob-stats');
+            container.innerHTML = '<div class="empty-state"><span class="loading-spinner"></span> Loading...</div>';
+            statsDiv.innerHTML = '';
+
+            try {
+                const resp = await fetch(`/api/margin?market=${encodeURIComponent(market)}`);
+                const data = await resp.json();
+                if (data.error) { container.innerHTML = `<div class="empty-state">Error: ${data.error}</div>`; return; }
+
+                probTableData = data.prices || [];
+                const margin = data.margin !== undefined ? data.margin : null;
+                const overround = data.overround !== undefined ? data.overround : null;
+
+                // Stats
+                statsDiv.innerHTML = `
+                    ${overround !== null ? `<div class="stat-box"><span class="stat-label">Overround</span><span class="stat-value">${(overround * 100).toFixed(2)}%</span></div>` : ''}
+                    ${margin !== null ? `<div class="stat-box"><span class="stat-label">Margin</span><span class="stat-value">${(margin * 100).toFixed(2)}%</span></div>` : ''}
+                    <div class="stat-box"><span class="stat-label">Teams</span><span class="stat-value">${probTableData.length}</span></div>
+                `;
+
+                renderProbTable();
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+            }
+        }
+
+        function renderProbTable() {
+            const container = document.getElementById('prob-table-container');
+            // Sort
+            const sorted = [...probTableData].sort((a, b) => {
+                let av = a[probSortCol], bv = b[probSortCol];
+                if (typeof av === 'string') {
+                    return probSortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+                }
+                return probSortDir === 'asc' ? av - bv : bv - av;
+            });
+
+            const thClass = (col) => probSortCol === col ? (probSortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : '';
+            container.innerHTML = `
+                <table class="data-table">
+                    <thead><tr>
+                        <th class="${thClass('team')}" onclick="sortProbTable('team')">Team</th>
+                        <th class="${thClass('price')}" onclick="sortProbTable('price')">Price</th>
+                        <th class="${thClass('probability')}" onclick="sortProbTable('probability')">Implied Prob</th>
+                    </tr></thead>
+                    <tbody>${sorted.map(p => `
+                        <tr>
+                            <td>${p.team}</td>
+                            <td style="color:var(--accent)" data-decimal-price="${p.price}">${formatPrice(p.price)}</td>
+                            <td>${(p.probability * 100).toFixed(2)}%</td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>
+            `;
+        }
+
+        function sortProbTable(col) {
+            if (probSortCol === col) {
+                probSortDir = probSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                probSortCol = col;
+                probSortDir = col === 'team' ? 'asc' : 'desc';
+            }
+            renderProbTable();
+        }
+
+        // ─── Production Comparison ──────────────────────────────────────
+        async function loadProductionComparison() {
+            const market = document.getElementById('prob-market-select').value;
+            if (!market) { showToast('Select a market first'); return; }
+            const section = document.getElementById('prod-compare-section');
+            const tbody = document.getElementById('prod-compare-body');
+            section.style.display = 'block';
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><span class="loading-spinner"></span> Fetching...</td></tr>';
+
+            try {
+                // Get OQS prices
+                const oqsResp = await fetch(`/api/margin?market=${encodeURIComponent(market)}`);
+                const oqsData = await oqsResp.json();
+                // Get production prices
+                const prodResp = await fetch(`/api/springbox/prices?marketType=${encodeURIComponent(market)}`);
+                const prodData = await prodResp.json();
+
+                if (prodData.error) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Error: ${prodData.error}</td></tr>`;
+                    return;
+                }
+
+                const oqsPrices = oqsData.prices || [];
+                const prodPrices = prodData.prices || [];
+
+                // Merge by team name
+                const merged = oqsPrices.map(o => {
+                    const prod = prodPrices.find(p => p.team === o.team);
+                    const prodPrice = prod ? prod.price : null;
+                    const diff = prodPrice ? (o.price - prodPrice).toFixed(4) : '—';
+                    const pctDiff = prodPrice ? ((o.price - prodPrice) / prodPrice * 100).toFixed(2) : '—';
+                    return { team: o.team, oqs: o.price, prod: prodPrice, diff, pctDiff };
+                });
+
+                tbody.innerHTML = merged.map(m => {
+                    const diffClass = m.diff !== '—' ? (parseFloat(m.diff) > 0 ? 'diff-positive' : parseFloat(m.diff) < 0 ? 'diff-negative' : '') : '';
+                    return `<tr>
+                        <td>${m.team}</td>
+                        <td class="oqs-col" data-decimal-price="${m.oqs}">${formatPrice(m.oqs)}</td>
+                        <td class="prod-col">${m.prod ? formatPrice(m.prod) : '—'}</td>
+                        <td class="diff-col ${diffClass}">${m.diff}</td>
+                        <td class="diff-col ${diffClass}">${m.pctDiff !== '—' ? m.pctDiff + '%' : '—'}</td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        // ─── Correlation Matrix ─────────────────────────────────────────
+        async function loadCorrelationMatrix() {
+            const market1 = document.getElementById('corr-market1').value;
+            const market2 = document.getElementById('corr-market2').value;
+            if (!market1 || !market2) { showToast('Select both markets'); return; }
+            const container = document.getElementById('corr-matrix-container');
+            container.innerHTML = '<div class="empty-state"><span class="loading-spinner"></span> Calculating matrix...</div>';
+
+            try {
+                // Get prices for both markets
+                const [resp1, resp2] = await Promise.all([
+                    fetch(`/api/margin?market=${encodeURIComponent(market1)}`),
+                    fetch(`/api/margin?market=${encodeURIComponent(market2)}`)
+                ]);
+                const data1 = await resp1.json();
+                const data2 = await resp2.json();
+
+                const teams1 = (data1.prices || []).slice(0, 10); // Limit for display
+                const teams2 = (data2.prices || []).slice(0, 10);
+
+                if (!teams1.length || !teams2.length) {
+                    container.innerHTML = '<div class="empty-state">No data for selected markets</div>';
+                    return;
+                }
+
+                // Calculate combined prices (multiply probabilities, convert back)
+                let html = '<table class="heatmap-table"><thead><tr><th></th>';
+                html += teams2.map(t => `<th>${t.team}</th>`).join('');
+                html += '</tr></thead><tbody>';
+
+                for (const t1 of teams1) {
+                    html += `<tr><td class="row-header">${t1.team}</td>`;
+                    for (const t2 of teams2) {
+                        const combinedProb = t1.probability * t2.probability;
+                        const combinedPrice = combinedProb > 0 ? (1 / combinedProb).toFixed(1) : '—';
+                        // Heatmap color intensity
+                        const intensity = Math.min(1, combinedProb * 10);
+                        const bg = `rgba(79,195,247,${(intensity * 0.4).toFixed(2)})`;
+                        html += `<td style="background:${bg}">${combinedPrice}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+            }
+        }
+
+        // ─── Auto-Scan ──────────────────────────────────────────────────
+        let autoScanResults = [];
+
+        function populateAutoScanTeam() {
+            const sel = document.getElementById('autoscan-team');
+            sel.innerHTML = teamsList.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+        }
+
+        function filterAutoScan(filter) {
+            // Update active button
+            document.querySelectorAll('.autoscan-filter').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+
+            // Filter and re-render
+            let filtered = autoScanResults;
+            if (filter === 'impossible') {
+                filtered = autoScanResults.filter(r => r.impossible);
+            } else if (filter === 'valid') {
+                filtered = autoScanResults.filter(r => !r.impossible);
+            }
+
+            renderAutoScanResults(filtered);
+        }
+
+        function renderAutoScanResults(results) {
+            const resultsDiv = document.getElementById('autoscan-results');
+            if (!results.length) {
+                resultsDiv.innerHTML = '<div class="empty-state">No results match this filter</div>';
+                return;
+            }
+            resultsDiv.innerHTML = `
+                <table class="data-table">
+                    <thead><tr><th>Combination</th><th>Price</th><th>Status</th></tr></thead>
+                    <tbody>${results.map(r => {
+                        const combo = r.combo || r.legs || '';
+                        const price = r.price ? `<span data-decimal-price="${r.price}">${formatPrice(r.price)}</span>` : '—';
+                        const status = r.impossible
+                            ? '<span class="combo-impossible">✗ Impossible</span>'
+                            : '<span class="combo-valid">✓ Valid</span>';
+                        return `<tr><td style="font-size:0.82em">${combo}</td><td style="color:var(--accent)">${price}</td><td>${status}</td></tr>`;
+                    }).join('')}</tbody>
+                </table>
+            `;
+        }
+
+        async function runAutoScan() {
+            const team = document.getElementById('autoscan-team').value;
+            if (!team) return;
+            const legs = parseInt(document.getElementById('autoscan-legs').value);
+            const btn = document.getElementById('autoscan-btn');
+            const statsDiv = document.getElementById('autoscan-stats');
+            const resultsDiv = document.getElementById('autoscan-results');
+            const filtersDiv = document.getElementById('autoscan-filters');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Scanning...';
+            statsDiv.innerHTML = '';
+            filtersDiv.style.display = 'none';
+            resultsDiv.innerHTML = `<div class="empty-state"><span class="loading-spinner"></span> Scanning all ${legs}-leg combinations...</div>`;
+
+            try {
+                const resp = await fetch('/api/autoscan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ team, legs })
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="empty-state">Error: ${data.error}</div>`;
+                    return;
+                }
+
+                autoScanResults = data.results || [];
+                const total = data.totalCombos || autoScanResults.length;
+                const impossible = data.impossibleCount || autoScanResults.filter(r => r.impossible).length;
+                const valid = total - impossible;
+
+                statsDiv.innerHTML = `
+                    <div class="stat-box"><span class="stat-label">Total Combos</span><span class="stat-value">${total}</span></div>
+                    <div class="stat-box"><span class="stat-label">Impossible</span><span class="stat-value" style="color:#ef5350">${impossible}</span></div>
+                    <div class="stat-box"><span class="stat-label">Valid</span><span class="stat-value" style="color:#66bb6a">${valid}</span></div>
+                `;
+
+                // Show filter buttons and update counts
+                filtersDiv.style.display = 'flex';
+                document.querySelector('[data-filter="all"]').textContent = `All (${total})`;
+                document.querySelector('[data-filter="impossible"]').textContent = `🚫 Impossible (${impossible})`;
+                document.querySelector('[data-filter="valid"]').textContent = `✓ Valid (${valid})`;
+
+                // Reset filter to 'all' and render
+                document.querySelectorAll('.autoscan-filter').forEach(btn => btn.classList.remove('active'));
+                document.querySelector('[data-filter="all"]').classList.add('active');
+                renderAutoScanResults(autoScanResults);
+            } catch (e) {
+                resultsDiv.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Scan All Combos';
+            }
+        }
+
+        // ─── Boot ───────────────────────────────────────────────────────
+        // ─── PETS Round-Trip ────────────────────────────────────────────
+        async function runPetsRoundtrip() {
+            const original = document.getElementById('pets-original').value.trim();
+            const translated = document.getElementById('pets-translated').value.trim();
+            const expectedOdds = document.getElementById('pets-expected-odds').value.trim();
+            const btn = document.getElementById('pets-btn');
+            const resultsDiv = document.getElementById('pets-results');
+
+            if (!original && !translated) {
+                showToast('Enter at least one expression');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Verifying...';
+            resultsDiv.innerHTML = '<div class="empty-state"><span class="loading-spinner"></span> Evaluating against SOCOQS...</div>';
+
+            try {
+                const resp = await fetch('/api/pets-roundtrip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        gameId,
+                        originalExpression: original,
+                        translatedExpression: translated,
+                        expectedOdds: expectedOdds || null
+                    })
+                });
+                const data = await resp.json();
+                renderPetsResults(data);
+            } catch (e) {
+                resultsDiv.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Verify Translation';
+            }
+        }
+
+        function renderPetsResults(data) {
+            const resultsDiv = document.getElementById('pets-results');
+            let html = '';
+
+            // Verdict banner
+            if (data.match === true) {
+                html += `<div class="result-card valid" style="text-align:center;padding:20px;">
+                    <div style="font-size:1.4em;color:#66bb6a;font-weight:700;">✅ TRANSLATION CORRECT</div>
+                    <div style="font-size:0.85em;color:var(--text-secondary);margin-top:6px;">Both expressions produce the same probability (diff: ${data.probabilityDiff})</div>
+                </div>`;
+            } else if (data.match === false) {
+                html += `<div class="result-card impossible" style="text-align:center;padding:20px;">
+                    <div style="font-size:1.4em;color:#ef5350;font-weight:700;">❌ TRANSLATION MISMATCH</div>
+                    <div style="font-size:0.85em;color:var(--text-secondary);margin-top:6px;">Probabilities differ by ${data.probabilityDiff} — the translation does NOT mean the same thing</div>
+                </div>`;
+            }
+
+            // Detail table
+            html += `<table class="data-table" style="margin-top:14px;">
+                <thead><tr><th>Expression</th><th>Probability</th><th>Price</th></tr></thead>
+                <tbody>`;
+            if (data.originalProbability !== undefined || data.originalError) {
+                const p = data.originalError ? `<span style="color:#ff9800">Error: ${data.originalError.slice(0,60)}</span>` : data.originalProbability;
+                const pr = data.originalPrice ? formatPrice(data.originalPrice) : '—';
+                html += `<tr><td style="color:var(--accent)">Original</td><td>${p}</td><td>${pr}</td></tr>`;
+            }
+            if (data.translatedProbability !== undefined || data.translatedError) {
+                const p = data.translatedError ? `<span style="color:#ff9800">Error: ${data.translatedError.slice(0,60)}</span>` : data.translatedProbability;
+                const pr = data.translatedPrice ? formatPrice(data.translatedPrice) : '—';
+                html += `<tr><td style="color:#ffb74d">Translated</td><td>${p}</td><td>${pr}</td></tr>`;
+            }
+            html += `</tbody></table>`;
+
+            // Expected odds comparison
+            if (data.expectedOdds !== undefined) {
+                const oddsColor = data.oddsMatch ? '#66bb6a' : '#ef5350';
+                const oddsIcon = data.oddsMatch ? '✅' : '❌';
+                html += `<div style="margin-top:14px;padding:12px;background:var(--bg-card);border-radius:8px;font-size:0.85em;">
+                    <strong>vs SLOT trueOdds:</strong> expected ${data.expectedOdds}, 
+                    got ${data.originalPrice ? data.originalPrice.toFixed(4) : '—'} 
+                    <span style="color:${oddsColor}">${oddsIcon} (diff: ${data.oddsDiff})</span>
+                </div>`;
+            }
+
+            resultsDiv.innerHTML = html || '<div class="empty-state">No results</div>';
+        }
+
+        // ─── Team Stats ─────────────────────────────────────────────────
+        // Human-friendly labels for known column types
+        const METRIC_LABELS = {
+            "Rank_Group_Team": "Final Position (Rank)",
+            "Points_Team": "Points",
+            "Goals_Group_Team": "Goals Scored",
+            "GoalsConceded_Group_Team": "Goals Conceded",
+            "Goals_Knockout_Team": "Knockout Goals",
+            "GoalsConceded_Knockout_Team": "Knockout Goals Conceded",
+            "EliminationStage_Team": "Elimination Stage",
+            "Rank_Knockout_Team": "Knockout Rank",
+            "Points_Knockout_Team": "Knockout Points",
+        };
+
+        let selectedMetric = 'Rank_Group_Team';
+
+        function populateStatsTeam() {
+            const sel = document.getElementById('stats-team');
+            if (sel) sel.innerHTML = teamsList.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            populateStatsMetrics();
+        }
+
+        function populateStatsMetrics() {
+            const container = document.getElementById('stats-metric-tabs');
+            if (!container) return;
+            // Auto-discover per-team metric prefixes from the loaded columns
+            const prefixes = new Set();
+            columns.forEach(c => {
+                if (/_\d+$/.test(c)) prefixes.add(c.replace(/_\d+$/, ''));
+            });
+            let found = Array.from(prefixes).sort();
+            if (found.length === 0) {
+                found = ['Rank_Group_Team', 'Points_Team', 'Goals_Group_Team', 'GoalsConceded_Group_Team'];
+            }
+            // Default selection
+            if (!found.includes(selectedMetric)) selectedMetric = found[0];
+            container.innerHTML = found.map(p => {
+                const label = METRIC_LABELS[p] || p.replace(/_/g, ' ');
+                const active = p === selectedMetric ? ' active' : '';
+                return `<div class="metric-tab${active}" data-metric="${p}" onclick="selectMetric('${p}')">${label}</div>`;
+            }).join('');
+        }
+
+        function selectMetric(metric) {
+            selectedMetric = metric;
+            document.querySelectorAll('.metric-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.metric === metric);
+            });
+            // Auto-reload — if a single team was showing, reload it; otherwise all teams
+            const resultsDiv = document.getElementById('stats-results');
+            if (resultsDiv.querySelector('.result-card')) {
+                loadStats();
+            } else {
+                loadAllStats();
+            }
+        }
+
+        async function loadStats() {
+            const teamId = document.getElementById('stats-team').value;
+            const metric = selectedMetric;
+            const teamName = teamsList.find(t => t.id === teamId)?.name || teamId;
+            const column = `${metric}_${teamId}`;
+            const btn = document.getElementById('stats-btn');
+            const resultsDiv = document.getElementById('stats-results');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span>';
+            resultsDiv.innerHTML = '<div class="empty-state"><span class="loading-spinner"></span> Loading...</div>';
+
+            try {
+                const resp = await fetch('/api/stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameId, column })
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="empty-state">Error: ${data.error}</div>`;
+                    return;
+                }
+                renderStats(teamName, metric, data.stats);
+            } catch (e) {
+                resultsDiv.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Get Stats';
+            }
+        }
+
+        function renderStats(teamName, metric, stats) {
+            const metricLabel = METRIC_LABELS[metric] || metric.replace(/_/g, ' ');
+            const fmt = (v) => (v === undefined || v === null) ? '—' : (typeof v === 'number' ? v.toFixed(2).replace(/\.00$/, '') : v);
+            const resultsDiv = document.getElementById('stats-results');
+            resultsDiv.innerHTML = `
+                <div class="result-card valid">
+                    <div class="result-name" style="margin-bottom:12px;">${teamName} — ${metricLabel}</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:12px;">
+                        <div class="stat-box"><span class="stat-label">Min</span><span class="stat-value">${fmt(stats.min)}</span></div>
+                        <div class="stat-box"><span class="stat-label">P10</span><span class="stat-value">${fmt(stats.p10)}</span></div>
+                        <div class="stat-box"><span class="stat-label">P25</span><span class="stat-value">${fmt(stats.p25)}</span></div>
+                        <div class="stat-box"><span class="stat-label">Median</span><span class="stat-value" style="color:var(--accent)">${fmt(stats.median)}</span></div>
+                        <div class="stat-box"><span class="stat-label">Mean</span><span class="stat-value" style="color:var(--accent)">${fmt(stats.mean)}</span></div>
+                        <div class="stat-box"><span class="stat-label">P75</span><span class="stat-value">${fmt(stats.p75)}</span></div>
+                        <div class="stat-box"><span class="stat-label">P90</span><span class="stat-value">${fmt(stats.p90)}</span></div>
+                        <div class="stat-box"><span class="stat-label">Max</span><span class="stat-value">${fmt(stats.max)}</span></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadAllStats() {
+            const metric = selectedMetric;
+            const metricLabel = METRIC_LABELS[metric] || metric.replace(/_/g, ' ');
+            const resultsDiv = document.getElementById('stats-results');
+            resultsDiv.innerHTML = '<div class="empty-state"><span class="loading-spinner"></span> Loading all teams...</div>';
+
+            const promises = teamsList.map(async (t) => {
+                const column = `${metric}_${t.id}`;
+                try {
+                    const resp = await fetch('/api/stats', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ gameId, column })
+                    });
+                    const data = await resp.json();
+                    return { team: t.name, stats: data.stats || {} };
+                } catch (e) {
+                    return { team: t.name, stats: {} };
+                }
+            });
+            const all = await Promise.all(promises);
+            const fmt = (v) => (v === undefined || v === null) ? '—' : (typeof v === 'number' ? v.toFixed(2).replace(/\.00$/, '') : v);
+            const ascending = metric.includes('Rank') || metric.includes('Conceded') || metric.includes('EliminationStage');
+            all.sort((a, b) => {
+                const am = a.stats.mean ?? 999, bm = b.stats.mean ?? 999;
+                return ascending ? am - bm : bm - am;
+            });
+            resultsDiv.innerHTML = `
+                <div style="font-size:1.1em;font-weight:600;color:var(--accent);margin-bottom:4px;">📊 ${metricLabel} — All Teams</div>
+                <div style="font-size:0.75em;color:var(--text-muted);margin-bottom:12px;">Sorted by mean (${ascending ? 'best first' : 'highest first'})</div>
+                <table class="data-table">
+                    <thead><tr><th>Team</th><th>Min</th><th>P10</th><th>Median</th><th>Mean</th><th>P90</th><th>Max</th></tr></thead>
+                    <tbody>${all.map(r => `<tr>
+                        <td>${r.team}</td>
+                        <td>${fmt(r.stats.min)}</td>
+                        <td>${fmt(r.stats.p10)}</td>
+                        <td style="color:var(--accent)">${fmt(r.stats.median)}</td>
+                        <td style="color:var(--accent)">${fmt(r.stats.mean)}</td>
+                        <td>${fmt(r.stats.p90)}</td>
+                        <td>${fmt(r.stats.max)}</td>
+                    </tr>`).join('')}</tbody>
+                </table>
+            `;
+        }
+
+        // ─── Version Check ──────────────────────────────────────────────
+        async function checkVersion() {
+            const badge = document.getElementById('version-badge');
+            try {
+                const resp = await fetch('/api/version');
+                const data = await resp.json();
+                badge.textContent = `v${data.currentVersion}`;
+                if (data.updateAvailable) {
+                    badge.textContent = `v${data.currentVersion} → v${data.latestVersion}`;
+                    badge.style.borderColor = 'rgba(102,187,106,0.5)';
+                    badge.style.color = '#66bb6a';
+                    badge.style.cursor = 'help';
+                    badge.title = `Update available: v${data.latestVersion}. Run: git pull && restart`;
+                    const banner = document.getElementById('update-banner');
+                    document.getElementById('update-msg').textContent =
+                        `A new version is available (v${data.currentVersion} → v${data.latestVersion}). Update with: `;
+                    banner.classList.add('visible');
+                } else {
+                    badge.title = `Version ${data.currentVersion} (up to date)`;
+                }
+            } catch (e) {
+                badge.textContent = `v${'?'}`;
+            }
+        }
+
+        async function boot() {
+            await init();
+            checkStaleness();
+            checkVersion();
+            populateProbMarketSelect();
+            populateAutoScanTeam();
+            populateStatsTeam();
+            // Check URL hash
+            if (loadFromHash()) {
+                setTimeout(() => calculatePrice(), 500);
+            }
+        }
+        boot();
+    </script>
+</body>
+</html>
